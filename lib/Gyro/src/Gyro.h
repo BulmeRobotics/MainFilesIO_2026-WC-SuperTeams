@@ -22,7 +22,7 @@
 class Gyro {
     private:
         // Configuration
-        #define I2C_ADDRESS_GYRO 0x28
+        static constexpr uint8_t I2C_ADDRESS_GYRO = 0x28;
 
         // Object
         Adafruit_BNO055 bno = Adafruit_BNO055(-1, I2C_ADDRESS_GYRO, &Wire);
@@ -32,8 +32,6 @@ class Gyro {
 
         // Methods
         float GetRawAngle(GyroAxles axis);
-        float SubtractAngles(float currentAngle, float subBy);
-        
     public:
         // Constructor
         Gyro() = default;
@@ -62,8 +60,8 @@ class Gyro {
         * @param actualAngle if instead of an axis an existing angle is given, the data will only be calculated
         * @return current angle in degrees (0-360°), the caluclated data is stored in 'data'.
         */
-        float GetAngle_advanced(float targetAngle, float actualAngle);
-        float GetAngle_advanced(float targetAngle, GyroAxles axis);
+        float GetAngleAdvanced(float targetAngle, float actualAngle);
+        float GetAngleAdvanced(float targetAngle, GyroAxles axis);
 
         /**
         * @brief  Method to get the angular value from a given orientation (NESW).

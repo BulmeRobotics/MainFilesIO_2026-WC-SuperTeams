@@ -84,10 +84,10 @@ ErrorCodes Driving::bumperHandler(void){
 #pragma region RAMPS
 #endif
 ErrorCodes Driving::checkRamp(void){
-    p_gyro->GetAngle_advanced(0, GyroAxles::Axis_Z);
+    p_gyro->GetAngleAdvanced(0, GyroAxles::Axis_Z);
     float incline = -p_gyro->data.angle_car;
 
-    p_gyro->GetAngle_advanced(0, GyroAxles::Axis_Y);
+    p_gyro->GetAngleAdvanced(0, GyroAxles::Axis_Y);
     float sideTilt = p_gyro->data.angle_car;
 
     // bool freezeColor = false;
@@ -215,13 +215,13 @@ ErrorCodes Driving::finishRamp(uint8_t distance){
 ErrorCodes Driving::rampHandler(void){
     if (!_ON_RAMP) checkRamp();
 	else {
-		p_gyro->GetAngle_advanced(0, GyroAxles::Axis_Z);
+		p_gyro->GetAngleAdvanced(0, GyroAxles::Axis_Z);
 		float incline = -p_gyro->data.angle_car;
 		arr_incline[arr_incline_index] = incline;	//Save the incline value in the array
 		arr_incline_index++;
 
 
-		p_gyro->GetAngle_advanced(0, GyroAxles::Axis_Y);		
+		p_gyro->GetAngleAdvanced(0, GyroAxles::Axis_Y);		
 
 		if  (_RAMP_UP && incline > maxRampIncline)	maxRampIncline = incline;	//Ramp up
 		else if (_RAMP_DOWN && incline < maxRampIncline) maxRampIncline = incline;	//Ramp down
@@ -373,7 +373,7 @@ ErrorCodes Driving::startTurn(float angle) {
 	_TURNING = true;
 	p_colorSensing->Freeze(true);
 
-	p_gyro->GetAngle_advanced(angle, GyroAxles::Axis_X);	//Get the gyro readings
+	p_gyro->GetAngleAdvanced(angle, GyroAxles::Axis_X);	//Get the gyro readings
 	if (abs(p_gyro->data.angle_error) > 150) _TURN_180_DEGREE = true;
 	else _TURN_180_DEGREE = false;	//Check if the turn is a 180 degree turn
 	return ErrorCodes::OK;
@@ -386,7 +386,7 @@ ErrorCodes Driving::controlTurn(float angle) {
 
 	if ((p_gyro->data.angle_abs >= (angle + 0.5) || (p_gyro->data.angle_abs <= (angle - 0.5))) && !turnTimeout) {
 		//Get the gyro readings and calculate the control data
-		p_gyro->GetAngle_advanced(angle, GyroAxles::Axis_X);
+		p_gyro->GetAngleAdvanced(angle, GyroAxles::Axis_X);
 		#ifdef DEBUG_TURN
 			Serial.print("Angle error: ");
 			Serial.print(p_gyro->data.angle_error);
@@ -586,7 +586,7 @@ ErrorCodes Driving::startDrive(bool rampDown) {
 ErrorCodes Driving::controlDrive(int8_t driveSpeed, float angle) {
 	if (_SLOW_SPEED)
 		driveSpeed = 25;
-	p_gyro->GetAngle_advanced(angle, GyroAxles::Axis_X);	//Gyro auslesen, für akutellen Winkel und Fehler
+	p_gyro->GetAngleAdvanced(angle, GyroAxles::Axis_X);	//Gyro auslesen, für akutellen Winkel und Fehler
 	int8_t leftRightError = p_tof->CalculateLeftRightError(p_gyro->data.angle_error, tof_sideWallThreshold, gap_robot_wall);
 	float error = -p_gyro->data.angle_error + (leftRightError * pid_LeftRightFactor);
 

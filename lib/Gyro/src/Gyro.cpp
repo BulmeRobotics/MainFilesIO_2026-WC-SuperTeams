@@ -53,7 +53,7 @@ float Gyro::GetAngle(GyroAxles axis) {
 	return 0;
 }
 
-float Gyro::GetAngle_advanced(float targetAngle, float actualAngle) {
+float Gyro::GetAngleAdvanced(float targetAngle, float actualAngle) {
 	// Get and constrain values
     targetAngle = constrain(targetAngle, 0, 360);
     data.angle_abs = constrain(actualAngle, 0, 360);
@@ -112,8 +112,8 @@ float Gyro::GetAngle_advanced(float targetAngle, float actualAngle) {
     return data.angle_abs;
 }
 
-float Gyro::GetAngle_advanced(float targetAngle, GyroAxles axis) {
-    return GetAngle_advanced(targetAngle, GetAngle(axis));
+float Gyro::GetAngleAdvanced(float targetAngle, GyroAxles axis) {
+    return GetAngleAdvanced(targetAngle, GetAngle(axis));
 }
 
 #ifdef _MSC_VER
@@ -230,12 +230,6 @@ float Gyro::GetRawAngle(GyroAxles axis) {
 	return 0;
 }
 
-//Private method to subtract one angle from another
-float Gyro::SubtractAngles(float currentAngle, float subBy) {
-	float out = currentAngle - subBy;
-	if (out < 0) return 360 + out;
-	return out;
-}
 #ifdef _MSC_VER
     #pragma endregion
 #endif
