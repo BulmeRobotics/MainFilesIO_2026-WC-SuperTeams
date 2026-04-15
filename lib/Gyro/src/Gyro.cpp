@@ -55,65 +55,68 @@ float Gyro::GetAngle(GyroAxles axis) {
 
 float Gyro::GetAngleAdvanced(float targetAngle, float actualAngle) {
 	// Get and constrain values
-    targetAngle = constrain(targetAngle, 0, 360);
-    data.angle_abs = constrain(actualAngle, 0, 360);
+	targetAngle = constrain(targetAngle, 0, 360);
+	data.angle_abs = constrain(actualAngle, 0, 360);
 
-    // calculate angular error (always between -180° and +180°)
-    float angleError = targetAngle - data.angle_abs;
-    if (angleError > 180) angleError -= 360;
-    if (angleError < -180) angleError += 360;
+	// calculate angular error (always between -180° and +180°)
+	float angleError = targetAngle - data.angle_abs;
+	if (angleError > 180) angleError -= 360;
+	if (angleError < -180) angleError += 360;
 
-    // store the angular error
-    data.angle_error = angleError;
+	// store the angular error
+	data.angle_error = angleError;
 
-    // set the direction, based on shortest turn
-    if (angleError > 0) {
-        data.direction_left = true;   // turn left
-        data.direction_right = false;
-    } else if (angleError < 0) {
-        data.direction_left = false;
-        data.direction_right = true; // turn right
-    } else {
-        // if the error is 0, no direction is set
-        data.direction_left = false;
-        data.direction_right = false;
-    }
+	// set the direction, based on shortest turn
+	if (angleError > 0) {
+		data.direction_left = true;   // turn left
+		data.direction_right = false;
+	}
+	else if (angleError < 0) {
+		data.direction_left = false;
+		data.direction_right = true; // turn right
+	}
+	else {
+		// if the error is 0, no direction is set
+		data.direction_left = false;
+		data.direction_right = false;
+	}
 
-    // exactly 180°-turn
-    if (abs(angleError) == 180) {
-        // always left
-        data.direction_left = true;
-        data.direction_right = false;
-    }
+	// exactly 180°-turn
+	if (abs(angleError) == 180) {
+		// always left
+		data.direction_left = true;
+		data.direction_right = false;
+	}
 
-    // calculate the cartesian angle (-180° bis +180°)
-    if (data.angle_abs <= 180) {
-        data.angle_car = data.angle_abs;
-    } else {
-        data.angle_car = data.angle_abs - 360;
-    }
+	// calculate the cartesian angle (-180° bis +180°)
+	if (data.angle_abs <= 180) {
+		data.angle_car = data.angle_abs;
+	}
+	else {
+		data.angle_car = data.angle_abs - 360;
+	}
 
-    #ifdef DEBUG_GYRO_ADVANCED
-    Serial.print("target: ");
-    Serial.print(targetAngle);
-    Serial.print("\tabs: ");
-    Serial.print(data.angle_abs);
-    Serial.print("\tcar: ");
-    Serial.print(data.angle_car);
-    Serial.print("\terror: ");
-    Serial.print(data.angle_error);
-    Serial.print("\tleft: ");
-    Serial.print(data.direction_left);
-    Serial.print("\tright: ");
-    Serial.println(data.direction_right);
+	#ifdef DEBUG_GYRO_ADVANCED
+	Serial.print("target: ");
+	Serial.print(targetAngle);
+	Serial.print("\tabs: ");
+	Serial.print(data.angle_abs);
+	Serial.print("\tcar: ");
+	Serial.print(data.angle_car);
+	Serial.print("\terror: ");
+	Serial.print(data.angle_error);
+	Serial.print("\tleft: ");
+	Serial.print(data.direction_left);
+	Serial.print("\tright: ");
+	Serial.println(data.direction_right);
 	#endif
 
-    // return the absolute angle
-    return data.angle_abs;
+	// return the absolute angle
+	return data.angle_abs;
 }
 
 float Gyro::GetAngleAdvanced(float targetAngle, GyroAxles axis) {
-    return GetAngleAdvanced(targetAngle, GetAngle(axis));
+	return GetAngleAdvanced(targetAngle, GetAngle(axis));
 }
 
 #ifdef _MSC_VER
@@ -131,7 +134,7 @@ float Gyro::GetAngleFromOrientation(Orientations orientation) {
 }
 
 Orientations Gyro::GetOrientationFromAngle(float angle) {
-    angle = constrain(angle, 0, 360);   // constrain input
+	angle = constrain(angle, 0, 360);   // constrain input
 	if (angle >= 315 || angle < 45) return Orientations::North;
 	else if (angle >= 45 && angle < 135) return Orientations::East;
 	else if (angle >= 135 && angle < 225) return Orientations::South;
@@ -185,7 +188,7 @@ void Gyro::ResetAllAngles(void) {
 }
 
 void Gyro::SetAngle(GyroAxles axis, float value) {
-    value = constrain(value, 0, 360);   //constrain input
+	value = constrain(value, 0, 360);   // constrain input
 
 	if (axis == GyroAxles::Axis_X) {
 		ResetAngle(axis);

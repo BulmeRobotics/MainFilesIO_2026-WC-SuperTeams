@@ -21,31 +21,42 @@ void encoder_ISR(void);
     #pragma region Motor Class //------------------------------------------------------------------------------------------------
 #endif
 class Motor {
-    public:
-        // Configuration
-        #define WHEEL_DIAMETER 93.0
-        #define MAX_VOLTAGE_PWM 8.26
-        #define GEAR_REDUCTION_RATIO 74.83
-        #define CLICKS_PER_MOTOR_ROTATION 11
-        #define CLICKS_PER_SHAFT_ROTATION (GEAR_REDUCTION_RATIO * CLICKS_PER_MOTOR_ROTATION)
-    
-        // Definitions
-        #define DRIVER_A 0
-        #define DRIVER_B 1
+    private:
+        //----Configuration----
+        static constexpr float   WHEEL_DIAMETER            = 93.0f;
+        static constexpr float   MAX_VOLTAGE_PWM           = 8.26f;
+        static constexpr float   GEAR_REDUCTION_RATIO      = 74.83f;
+        static constexpr uint8_t CLICKS_PER_MOTOR_ROTATION = 11;
+        static constexpr float   CLICKS_PER_SHAFT_ROTATION = GEAR_REDUCTION_RATIO * CLICKS_PER_MOTOR_ROTATION;
+        //----Members----
+        uint8_t cwPinA, ccwPinA, cwPinB, ccwPinB, pwmPin, encoderPhaseA;
+        uint8_t driver;
+        float maxMotorVoltage;
+        int16_t maxPWM;
 
-        // Constructor
+        //----Methods----
+        void SetPositiveDirection(void);
+        void SetNegativeDirection(void);
+        void InitDriverPins(uint8_t pinA, uint8_t pinB);
+
+    public:
+        //----Definitions----
+        static constexpr uint8_t DRIVER_A = 0;
+        static constexpr uint8_t DRIVER_B = 1;
+
+        //----Constructor----
         /**
         * @brief  Constructor of the motor driver class.
-        * @param  pwmPin PWM pin that controls the motor
-        * @param  driver DRIVER_A or DRIVER_B, depending to which the motor is connected
-        * @param  maxMotorVoltage from this voltage the maximum PWM-duty-cycle will be calculated (max. 8.26V).
-        * @param  driverPinCW the pin that connect to the clockwise direction-pin of the driver
-        * @param  driverPinCCW the pin that connect to the counter-clockwise direction-pin of the driver
+        * @param  pwmPin PWM pin that controls the motor.
+        * @param  driver driver channel: 0 = Driver A, 1 = Driver B.
+        * @param  driverPinCW pin connected to the clockwise direction-pin of the driver.
+        * @param  driverPinCCW pin connected to the counter-clockwise direction-pin of the driver.
         * @param  encoderPhaseA one of the two encoder pins of the motor.
+        * @param  maxMotorVoltage maximum motor voltage; used to calculate max PWM duty-cycle (max. 8.26V).
         */
         Motor(uint8_t pwmPin, uint8_t driver, uint8_t driverPinCW, uint8_t driverPinCCW, uint8_t encoderPhaseA, float maxMotorVoltage = 8.26);
 
-        // Methods
+        //----Methods----
         /**
         * @brief  Method to set the speed of the motor in percent.
         * @param  speed percentage of the speed (-100% to +100%).
@@ -64,8 +75,8 @@ class Motor {
         void ResetEncoder(uint64_t value = 0);
 
         /**
-        * @brief  Method to get the current angle of the motor shaft.
-        * @return current value of the motor angle.
+        * @brief  Returns the current angle of the motor shaft based on encoder count.
+        * @return shaft angle in degrees.
         */
         float GetEncoderAngle(void);
 
@@ -84,18 +95,6 @@ class Motor {
         * @brief  Method to disable the encoder. Disables the interrupt.
         */
         void DisableEncoder(void);
-
-    private:
-        // Member
-        uint8_t cwPinA, ccwPinA, cwPinB, ccwPinB, pwmPin, encoderPhaseA;
-        uint8_t driver;
-        float maxMotorVoltage;
-        int16_t maxPWM;
-
-        // Methods
-        void SetPositiveDirection(void);
-        void SetNegativeDirection(void);
-        void InitDriverPins(uint8_t pinA, uint8_t pinB);
 };
 
 
@@ -104,47 +103,56 @@ class Motor {
     #pragma region Drivetrain Class //------------------------------------------------------------------------------------------------
 #endif
 class Drivetrain {
+    private:
+        //----Configuration----
+        static constexpr uint8_t MOTOR_LB_PWM     = 13;
+        static constexpr uint8_t MOTOR_LB_CW      = 36;
+        static constexpr uint8_t MOTOR_LB_CCW     = 39;
+        static constexpr uint8_t MOTOR_LB_ENCODER = 5;
+        static constexpr uint8_t MOTOR_LB_DRIVER  = Motor::DRIVER_A;
+
+        static constexpr uint8_t MOTOR_LF_PWM     = 11;
+        static constexpr uint8_t MOTOR_LF_CW      = 36;
+        static constexpr uint8_t MOTOR_LF_CCW     = 39;
+        static constexpr uint8_t MOTOR_LF_ENCODER = 6;  // Not-existent
+        static constexpr uint8_t MOTOR_LF_DRIVER  = Motor::DRIVER_A;
+
+        static constexpr uint8_t MOTOR_RF_PWM     = 10;
+        static constexpr uint8_t MOTOR_RF_CW      = 37;
+        static constexpr uint8_t MOTOR_RF_CCW     = 38;
+        static constexpr uint8_t MOTOR_RF_ENCODER = 3;
+        static constexpr uint8_t MOTOR_RF_DRIVER  = Motor::DRIVER_B;
+
+        static constexpr uint8_t MOTOR_RB_PWM     = 9;
+        static constexpr uint8_t MOTOR_RB_CW      = 37;
+        static constexpr uint8_t MOTOR_RB_CCW     = 38;
+        static constexpr uint8_t MOTOR_RB_ENCODER = 2;  // Not-existent
+        static constexpr uint8_t MOTOR_RB_DRIVER  = Motor::DRIVER_B;
+
+        //----Members----
+        Motor motorLB = Motor(MOTOR_LB_PWM, MOTOR_LB_DRIVER, MOTOR_LB_CW, MOTOR_LB_CCW, MOTOR_LB_ENCODER);
+        Motor motorLF = Motor(MOTOR_LF_PWM, MOTOR_LF_DRIVER, MOTOR_LF_CW, MOTOR_LF_CCW, MOTOR_LF_ENCODER);
+        Motor motorRF = Motor(MOTOR_RF_PWM, MOTOR_RF_DRIVER, MOTOR_RF_CW, MOTOR_RF_CCW, MOTOR_RF_ENCODER);
+        Motor motorRB = Motor(MOTOR_RB_PWM, MOTOR_RB_DRIVER, MOTOR_RB_CW, MOTOR_RB_CCW, MOTOR_RB_ENCODER);
+
     public:
-        // Configuration
-        #define MOTOR_LB_PWM 13
-        #define MOTOR_LB_CW 36
-        #define MOTOR_LB_CCW 39
-        #define MOTOR_LB_ENCODER 5
-        #define MOTOR_LB_DRIVER DRIVER_A
-        
-        #define MOTOR_LF_PWM 11
-        #define MOTOR_LF_CW 36
-        #define MOTOR_LF_CCW 39
-        #define MOTOR_LF_ENCODER 6  // Not-existent
-        #define MOTOR_LF_DRIVER DRIVER_A
-
-        #define MOTOR_RF_PWM 10
-        #define MOTOR_RF_CW 37
-        #define MOTOR_RF_CCW 38
-        #define MOTOR_RF_ENCODER 3
-        #define MOTOR_RF_DRIVER DRIVER_B
-
-        #define MOTOR_RB_PWM 9
-        #define MOTOR_RB_CW 37
-        #define MOTOR_RB_CCW 38
-        #define MOTOR_RB_ENCODER 2  // Not-existent
-        #define MOTOR_RB_DRIVER DRIVER_B
-
-        // Constructor
+        //----Constructor----
         Drivetrain() = default;
 
-        // Methods
+        //----Methods----
         /**
-        * @brief  Overloaded method to set the speed of the motors in percent.
-        *         When 1 parameter is given, the value applies to all 4 motors.
-        *         When 4 parameters are given, the values apply to the corresponding motor.
-        * @param  speedLB Motor-Left-Back: percentage of the speed (-100% to +100%).
-        * @param  speedLF Motor-Left-Front: percentage of the speed (-100% to +100%).
-        * @param  speedRF Motor-Right-Front: percentage of the speed (-100% to +100%).
-        * @param  speedRB Motor-Right-Back: percentage of the speed (-100% to +100%).
-        * @param  speed For all: percentage of the speed (-100% to +100%).
+        * @brief  Sets the speed of each motor individually.
+        * @param  speedLB Left-Back motor speed (-100% to +100%).
+        * @param  speedLF Left-Front motor speed (-100% to +100%).
+        * @param  speedRF Right-Front motor speed (-100% to +100%).
+        * @param  speedRB Right-Back motor speed (-100% to +100%).
         */
         void SetSpeed(int8_t speedLB, int8_t speedLF, int8_t speedRF, int8_t speedRB);
+
+        /**
+        * @brief  Sets the speed of all four motors to the same value.
+        * @param  speed percentage of the speed (-100% to +100%).
+        */
         void SetSpeed(int8_t speed);
 
         /**
@@ -211,12 +219,6 @@ class Drivetrain {
         */
         void DisableEncoder(void);
 
-    private:
-        // Member
-        Motor motorLB = Motor(MOTOR_LB_PWM, MOTOR_LB_DRIVER, MOTOR_LB_CW, MOTOR_LB_CCW, MOTOR_LB_ENCODER);
-        Motor motorLF = Motor(MOTOR_LF_PWM, MOTOR_LF_DRIVER, MOTOR_LF_CW, MOTOR_LF_CCW, MOTOR_LF_ENCODER);
-        Motor motorRF = Motor(MOTOR_RF_PWM, MOTOR_RF_DRIVER, MOTOR_RF_CW, MOTOR_RF_CCW, MOTOR_RF_ENCODER);
-        Motor motorRB = Motor(MOTOR_RB_PWM, MOTOR_RB_DRIVER, MOTOR_RB_CW, MOTOR_RB_CCW, MOTOR_RB_ENCODER);
 };
 #ifdef _MSC_VER
     #pragma endregion
