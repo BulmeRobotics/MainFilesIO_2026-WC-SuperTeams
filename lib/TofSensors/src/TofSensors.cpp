@@ -1,40 +1,36 @@
 /**
 * @name:    TofSensors.cpp
-* @date:	18.11.2025
+* @date:    18.11.2025
 * @authors: Florian Wiesner
-* @details: .cpp file for Time-of-Flight-Sensors 
+* @details: .cpp file for Time-of-Flight-Sensors
 */
 
-// Libraries
+//----Libraries----
 #include "TofSensors.h"
 
 #ifdef _MSC_VER
     #pragma region Parent Class //-----------------------------------------------------------------------------------------------
 #endif
 TofParent::TofParent(uint8_t i2cAddr, uint8_t xshut)
-{
-    xshutPin = xshut;
-    i2cAddress = i2cAddr;
-    lastMeasurement = 0;
-    measurementCount = 0;
-    ts_lastMeasurement = 0;
-
-    ts_waitStart = 0;
-    ts_lastReadCall = 0;
-    waitingForMeasurement = false;
-    timeoutOccured = false;
-    newData = false;
-
-    lastStatus = static_cast<TofStatus>(0);
-}
+	: xshutPin(xshut),
+	  i2cAddress(i2cAddr),
+	  lastMeasurement(0),
+	  lastStatus(static_cast<TofStatus>(0)),
+	  measurementCount(0),
+	  ts_lastMeasurement(0),
+	  ts_waitStart(0),
+	  ts_lastReadCall(0),
+	  timeoutOccured(false),
+	  waitingForMeasurement(false),
+	  newData(false) {}
 
 void TofParent::Off(void) {
-    pinMode(xshutPin, OUTPUT);
-    digitalWrite(xshutPin, LOW);
+	pinMode(xshutPin, OUTPUT);
+	digitalWrite(xshutPin, LOW);
 }
 
 void TofParent::On(void) {
-    pinMode(xshutPin, INPUT_PULLUP);
+	pinMode(xshutPin, INPUT_PULLUP);
 }
 
 bool TofParent::Init(void) { return false; }
@@ -50,11 +46,11 @@ ErrorCodes TofParent::Continue(void) { return ErrorCodes::ERROR; }
     #pragma endregion
     #pragma region VL6180X //----------------------------------------------------------------------------------------------------
 #endif
-TofVL6180X::TofVL6180X(uint8_t i2cAddress , uint8_t xshutPin)
-    : TofParent(i2cAddress, xshutPin) {}
+TofVL6180X::TofVL6180X(uint8_t i2cAddress, uint8_t xshutPin)
+	: TofParent(i2cAddress, xshutPin) {}
 
 bool TofVL6180X::Init(void) {
-    On();
+	On();
 	delay(100);
 	sensor.setTimeout(500);
 	sensor.init();
@@ -68,89 +64,89 @@ bool TofVL6180X::Init(void) {
 	delay(100);
 	sensor.setAddress(i2cAddress);
 	sensor.startRangeContinuous(RANGING_BUDGET_SHORT);
-    return true;
+	return true;
 }
 
 ErrorCodes TofVL6180X::Read(void) {
-    uint8_t update = sensor.readRangeContinuous();
-    if (update != 0) {
-        lastMeasurement = update;
-        ts_lastMeasurement = millis();
-        newData = true;
-        measurementCount++;
+	uint8_t update = sensor.readRangeContinuous();
+	if (update != 0) {
+		lastMeasurement = update;
+		ts_lastMeasurement = millis();
+		newData = true;
+		measurementCount++;
 
-        if (lastMeasurement < 255) {
-            lastStatus = TofStatus::VALID;
-            return ErrorCodes::NEW_DATA;
-        }
-        else {
-            lastStatus = TofStatus::OUT_OF_RANGE;
-            return ErrorCodes::OUT_OF_RANGE;
-        }
-    }
-    if (sensor.timeoutOccurred()) return ErrorCodes::TIMEOUT;
-    else return ErrorCodes::OK;
+		if (lastMeasurement < 255) {
+			lastStatus = TofStatus::VALID;
+			return ErrorCodes::NEW_DATA;
+		}
+		else {
+			lastStatus = TofStatus::OUT_OF_RANGE;
+			return ErrorCodes::OUT_OF_RANGE;
+		}
+	}
+	if (sensor.timeoutOccurred()) return ErrorCodes::TIMEOUT;
+	else return ErrorCodes::OK;
 }
 
 uint16_t TofVL6180X::GetRange(void) {
-    return lastMeasurement;
+	return lastMeasurement;
 }
 
 TofStatus TofVL6180X::GetStatus(void) {
-    return lastStatus;
+	return lastStatus;
 }
 
 bool TofVL6180X::IsDataNew(void) {
-    return newData;
+	return newData;
 }
 
 bool TofVL6180X::TimeoutOccured(void) {
-    return timeoutOccured;
+	return timeoutOccured;
 }
 
 ErrorCodes TofVL6180X::Stop(void) {
-    sensor.stopContinuous();
-    delay(5);
-    newData = false;
-    waitingForMeasurement = false;
+	sensor.stopContinuous();
+	delay(5);
+	newData = false;
+	waitingForMeasurement = false;
 
-    if (sensor.getTimeout()) {
-        timeoutOccured = true;
-        lastStatus = TofStatus::TIMEOUT;
-        return ErrorCodes::TIMEOUT;
-    }
+	if (sensor.getTimeout()) {
+		timeoutOccured = true;
+		lastStatus = TofStatus::TIMEOUT;
+		return ErrorCodes::TIMEOUT;
+	}
 
-    timeoutOccured = false;
-    return ErrorCodes::OK;
+	timeoutOccured = false;
+	return ErrorCodes::OK;
 }
 
 ErrorCodes TofVL6180X::Continue(void) {
-    sensor.startRangeContinuous(RANGING_BUDGET_SHORT);
-    timeoutOccured = false;
-    waitingForMeasurement = false;
-    ts_lastReadCall = millis();
-    return ErrorCodes::OK;
+	sensor.startRangeContinuous(RANGING_BUDGET_SHORT);
+	timeoutOccured = false;
+	waitingForMeasurement = false;
+	ts_lastReadCall = millis();
+	return ErrorCodes::OK;
 }
 
 #ifdef _MSC_VER
     #pragma endregion
     #pragma region VL53L4CD //---------------------------------------------------------------------------------------------------
 #endif
-TofVL53L4CD::TofVL53L4CD(uint8_t i2cAddress , uint8_t xshutPin)
-    : TofParent(i2cAddress, xshutPin), sensor(&Wire, xshutPin) {}
+TofVL53L4CD::TofVL53L4CD(uint8_t i2cAddress, uint8_t xshutPin)
+	: TofParent(i2cAddress, xshutPin), sensor(&Wire, xshutPin) {}
 
 bool TofVL53L4CD::Init(void) {
-    On();
+	On();
 	delay(10);
 	sensor.begin();
 	sensor.VL53L4CD_Off();
 	sensor.InitSensor(i2cAddress);
 	sensor.VL53L4CD_SetRangeTiming(RANGING_BUDGET_MID, 0);
 	sensor.VL53L4CD_StartRanging();
-    timeoutOccured = false;
-    waitingForMeasurement = false;
-    ts_lastReadCall = millis();
-    return true;
+	timeoutOccured = false;
+	waitingForMeasurement = false;
+	ts_lastReadCall = millis();
+	return true;
 }
 
 // ErrorCodes TofVL53L4CD::Read(void) {
@@ -169,7 +165,7 @@ bool TofVL53L4CD::Init(void) {
 // 		//Read measured distance. RangeStatus = 0 means valid data
 // 		sensor.VL53L4CD_GetResult(&results);
 // 	}
-	
+
 //     // !!!----!!!!----calculateTrueRange_constant(&results.distance_mm, rangeCoeff_midFront_constant);
 
 //     ts_lastMeasurement = millis();
@@ -189,189 +185,183 @@ bool TofVL53L4CD::Init(void) {
 //     }
 // }
 
-ErrorCodes TofVL53L4CD::Read(void)
-{
-    uint8_t newDataReady = 0;
-    uint8_t rangeStatus = 255;
-    uint16_t distance = 0;
-    uint8_t status = 0;
+ErrorCodes TofVL53L4CD::Read(void) {
+	uint8_t newDataReady = 0;
+	uint8_t rangeStatus = 255;
+	uint16_t distance = 0;
+	uint8_t status = 0;
 
-    const uint32_t now = millis();
+	const uint32_t now = millis();
 
-    // Wenn Read() lange nicht aufgerufen wurde, alten Wartezustand verwerfen.
-    // Sonst würdest du nach 10 s Pause beim ersten neuen Aufruf sofort TIMEOUT bekommen.
-    if ((now - ts_lastReadCall) > TIMEOUT_TIME_MS) {
-        waitingForMeasurement = false;
-    }
-    ts_lastReadCall = now;
+	// If Read() hasn't been called for a while, discard the old wait state.
+	// Otherwise after a 10s pause the first new call would immediately return TIMEOUT.
+	if ((now - ts_lastReadCall) > TIMEOUT_TIME_MS) {
+		waitingForMeasurement = false;
+	}
+	ts_lastReadCall = now;
 
-    // Nur wenn wir aktiv pollen, beginnt ein neuer Wartevorgang
-    if (!waitingForMeasurement) {
-        ts_waitStart = now;
-        waitingForMeasurement = true;
-    }
+	// A new wait cycle only begins when we start actively polling
+	if (!waitingForMeasurement) {
+		ts_waitStart = now;
+		waitingForMeasurement = true;
+	}
 
-    status = sensor.VL53L4CD_CheckForDataReady(&newDataReady);
-    if (status != 0) {
-        waitingForMeasurement = false;
-        timeoutOccured = false;
-        lastStatus = TofStatus::ERROR;
-        return ErrorCodes::ERROR;
-    }
+	status = sensor.VL53L4CD_CheckForDataReady(&newDataReady);
+	if (status != 0) {
+		waitingForMeasurement = false;
+		timeoutOccured = false;
+		lastStatus = TofStatus::ERROR;
+		return ErrorCodes::ERROR;
+	}
 
-    if (newDataReady == 0) {
-        if ((now - ts_waitStart) > TIMEOUT_TIME_MS) {
-            waitingForMeasurement = false;
-            timeoutOccured = true;
-            lastMeasurement = INVALID_MEASUREMENT;
-            lastStatus = TofStatus::TIMEOUT;
-            return ErrorCodes::TIMEOUT;
-        }
+	if (newDataReady == 0) {
+		if ((now - ts_waitStart) > TIMEOUT_TIME_MS) {
+			waitingForMeasurement = false;
+			timeoutOccured = true;
+			lastMeasurement = INVALID_MEASUREMENT;
+			lastStatus = TofStatus::TIMEOUT;
+			return ErrorCodes::TIMEOUT;
+		}
 
-        return ErrorCodes::NO_NEW_DATA;
-    }
+		return ErrorCodes::NO_NEW_DATA;
+	}
 
-    status = sensor.VL53L4CD_ClearInterrupt();
-    if (status != 0) {
-        waitingForMeasurement = false;
-        timeoutOccured = false;
-        lastStatus = TofStatus::ERROR;
-        return ErrorCodes::ERROR;
-    }
+	status = sensor.VL53L4CD_ClearInterrupt();
+	if (status != 0) {
+		waitingForMeasurement = false;
+		timeoutOccured = false;
+		lastStatus = TofStatus::ERROR;
+		return ErrorCodes::ERROR;
+	}
 
-    status = sensor.VL53L4CD_GetMinimalResult(&rangeStatus, &distance);
-    if (status != 0) {
-        waitingForMeasurement = false;
-        timeoutOccured = false;
-        lastStatus = TofStatus::ERROR;
-        return ErrorCodes::ERROR;
-    }
+	status = sensor.VL53L4CD_GetMinimalResult(&rangeStatus, &distance);
+	if (status != 0) {
+		waitingForMeasurement = false;
+		timeoutOccured = false;
+		lastStatus = TofStatus::ERROR;
+		return ErrorCodes::ERROR;
+	}
 
-    waitingForMeasurement = false;
-    timeoutOccured = false;
+	waitingForMeasurement = false;
+	timeoutOccured = false;
 
-    ts_lastMeasurement = now;
-    newData = true;
-    measurementCount++;
+	ts_lastMeasurement = now;
+	newData = true;
+	measurementCount++;
 
-    // Optional:
-    // calculateTrueRange_constant(&results.distance_mm, rangeCoeff_midFront_constant);
+	// Optional:
+	// calculateTrueRange_constant(&results.distance_mm, rangeCoeff_midFront_constant);
 
-    if (rangeStatus == 0) {
-        lastMeasurement = distance;
-        lastStatus = TofStatus::VALID;
-        return ErrorCodes::NEW_DATA;
-    } else {
-        lastMeasurement = INVALID_MEASUREMENT;
-        lastStatus = TofStatus::OUT_OF_RANGE;
-        return ErrorCodes::NEW_DATA;
-    }
+	if (rangeStatus == 0) {
+		lastMeasurement = distance;
+		lastStatus = TofStatus::VALID;
+		return ErrorCodes::NEW_DATA;
+	}
+	else {
+		lastMeasurement = INVALID_MEASUREMENT;
+		lastStatus = TofStatus::OUT_OF_RANGE;
+		return ErrorCodes::NEW_DATA;
+	}
 }
 
 uint16_t TofVL53L4CD::GetRange(void) {
-    newData = false;
-    return lastMeasurement;
+	newData = false;
+	return lastMeasurement;
 }
 
 TofStatus TofVL53L4CD::GetStatus(void) {
-    return lastStatus;
+	return lastStatus;
 }
 
 bool TofVL53L4CD::IsDataNew(void) {
-    return newData;
+	return newData;
 }
 
 bool TofVL53L4CD::TimeoutOccured(void) {
-    return timeoutOccured;
+	return timeoutOccured;
 }
 
 ErrorCodes TofVL53L4CD::Stop(void) {
-    sensor.VL53L4CD_StopRanging();
-    waitingForMeasurement = false;
-    return ErrorCodes::OK;
+	sensor.VL53L4CD_StopRanging();
+	waitingForMeasurement = false;
+	return ErrorCodes::OK;
 }
 
 ErrorCodes TofVL53L4CD::Continue(void) {
-    sensor.VL53L4CD_StartRanging();
-    waitingForMeasurement = false;
-    timeoutOccured = false;
-    ts_lastReadCall = millis();
-    return ErrorCodes::OK;
+	sensor.VL53L4CD_StartRanging();
+	waitingForMeasurement = false;
+	timeoutOccured = false;
+	ts_lastReadCall = millis();
+	return ErrorCodes::OK;
 }
 
 #ifdef _MSC_VER
     #pragma endregion
     #pragma region VL53L5CX //---------------------------------------------------------------------------------------------------
 #endif
-
-TofVL53L5CX::TofVL53L5CX(uint8_t i2cAddress , uint8_t xshutPin)
-    : TofParent(i2cAddress, xshutPin) {}
+TofVL53L5CX::TofVL53L5CX(uint8_t i2cAddress, uint8_t xshutPin)
+	: TofParent(i2cAddress, xshutPin) {}
 
 bool TofVL53L5CX::Init(void) {
 	On();
 	delay(10);
-	if(!sensor.begin()) sensor.begin(i2cAddress);
+	if (!sensor.begin()) sensor.begin(i2cAddress);
 	sensor.setResolution(8 * 8);
 	sensor.setAddress(i2cAddress);
 	sensor.setRangingFrequency(15);
 	sensor.startRanging();
-    return true;
+	return true;
 }
 
 bool TofVL53L5CX::IsRamp(void) {
-	// Warte auf neue Daten mit Timeout
-    const unsigned long timeout = 1000; // Timeout in Millisekunden
-    unsigned long startTime = millis();
+	// Wait for new data with timeout
+	const unsigned long timeout = 1000;
+	unsigned long startTime = millis();
 
-    while (!sensor.isDataReady()) {
-        if (millis() - startTime > timeout) {
-            #ifdef DEBUG_X64_VIEW
-            Serial.println("Timeout while waiting for new data.");
-            #endif
-            return false; // Keine neuen Daten verfügbar
-        }
-    }
+	while (!sensor.isDataReady()) {
+		if (millis() - startTime > timeout) {
+			#ifdef DEBUG_X64_VIEW
+			Serial.println("Timeout while waiting for new data.");
+			#endif
+			return false;
+		}
+	}
 
-	//Daten sind bereit, lese sie
+	// Data is ready, read it
 	if (sensor.getRangingData(&measurementData)) {
-        #ifdef DEBUG_X64
+		#ifdef DEBUG_X64
 		for (int y = 0; y <= imageWidth * (imageWidth - 1); y += imageWidth) {
 			for (int x = imageWidth - 1; x >= 0; x--) {
-				//Serial.print("\tX:");
-				//Serial.print(x);
-				//Serial.print(" Y:");
-			   // Serial.print(y);
-			   // Serial.print(" D:");
 				Serial.print(measurementData.distance_mm[x + y]);
 				Serial.print("\t");
 			}
 			Serial.println();
 		}
 		Serial.println();
-        #endif
-		int Upper = (measurementData.distance_mm[messurePointsUpper[0]] + measurementData.distance_mm[messurePointsUpper[1]]) / 2;
-		int Lower = (measurementData.distance_mm[messurePointsLower[0]] + measurementData.distance_mm[messurePointsLower[1]]) / 2;
+		#endif
+		int upper = (measurementData.distance_mm[messurePointsUpper[0]] + measurementData.distance_mm[messurePointsUpper[1]]) / 2;
+		int lower = (measurementData.distance_mm[messurePointsLower[0]] + measurementData.distance_mm[messurePointsLower[1]]) / 2;
 
-		if (Lower <= FRONT_MAX_DETECTION_DISTANCE && Upper <= FRONT_MAX_DETECTION_DISTANCE) {
+		if (lower <= FRONT_MAX_DETECTION_DISTANCE && upper <= FRONT_MAX_DETECTION_DISTANCE) {
 			#ifdef DEBUG_X64_VIEW
 			Serial.print("Upper: ");
-			Serial.print(Upper);
+			Serial.print(upper);
 			Serial.print(" \tLower: ");
-			Serial.print(Lower);
+			Serial.print(lower);
 			Serial.print(" \tDiff: ");
-			Serial.print(Upper - Lower);
+			Serial.print(upper - lower);
 			Serial.print("\n");
 			#endif
-	
-			if ((Upper - Lower) >= FRONT_DIFF_DETECTION_VALUE) {
+
+			if ((upper - lower) >= FRONT_DIFF_DETECTION_VALUE) {
 				#ifdef DEBUG_X64_VIEW
 				Serial.println("Ramp detected!");
 				#endif
-				return true;	//Ramp detected
+				return true;	// Ramp detected
 			}
-			else return false;	//Ramp not detected
+			else return false;	// Ramp not detected
 		}
-		else return false;	//Ramp not detected
+		else return false;	// Ramp not detected
 	}
 	else return false;
 }
@@ -380,196 +370,194 @@ bool TofVL53L5CX::IsRamp(void) {
     #pragma endregion
     #pragma region TOF Class //--------------------------------------------------------------------------------------------------
 #endif
+// Private method to disable all ToF sensors via their XSHUT pins
 void TofSensors::DisableAll(void) {
-    leftBack.Off();
-    leftFront.Off();
-    rightFront.Off();
-    rightBack.Off();
-    front.Off();
-    back.Off();
-    front_x64.Off();
-    back_x64.Off();
+	leftBack.Off();
+	leftFront.Off();
+	rightFront.Off();
+	rightBack.Off();
+	front.Off();
+	back.Off();
+	front_x64.Off();
+	back_x64.Off();
 }
 
 ErrorCodes TofSensors::Init(void) {
-    DisableAll();
-    EnableUpdate();
-    delay(50);
+	DisableAll();
+	EnableUpdate();
+	delay(50);
 
-    if (leftBack.Init() == true && leftFront.Init() == true && rightFront.Init() == true 
-        && rightBack.Init() == true && back.Init() == true && front.Init() == true
-        && back_x64.Init() == true && front_x64.Init() == true)
-        return ErrorCodes::OK;
-    else 
-        return ErrorCodes::ERROR;
+	if (leftBack.Init() == true && leftFront.Init() == true && rightFront.Init() == true
+		&& rightBack.Init() == true && back.Init() == true && front.Init() == true
+		&& back_x64.Init() == true && front_x64.Init() == true)
+		return ErrorCodes::OK;
+	else
+		return ErrorCodes::ERROR;
 }
 
 ErrorCodes TofSensors::Update(void) {
-    if (!updateEnabled) return ErrorCodes::OK;
+	if (!_UPDATE_ENABLED) return ErrorCodes::OK;
 
-    ErrorCodes errLB = leftBack.Read();
-    ErrorCodes errLF = leftFront.Read();
-    ErrorCodes errRF = rightFront.Read();
-    ErrorCodes errRB = rightBack.Read();
-    ErrorCodes errBU = back.Read();
-    ErrorCodes errFU = front.Read();
-    // ErrorCodes errBL = back_x64.Read();
-    // ErrorCodes errFL = front_x64.Read();
+	ErrorCodes errLB = leftBack.Read();
+	ErrorCodes errLF = leftFront.Read();
+	ErrorCodes errRF = rightFront.Read();
+	ErrorCodes errRB = rightBack.Read();
+	ErrorCodes errBU = back.Read();
+	ErrorCodes errFU = front.Read();
+	// ErrorCodes errBL = back_x64.Read();
+	// ErrorCodes errFL = front_x64.Read();
 
-    if (errLB == ErrorCodes::NEW_DATA || errLF == ErrorCodes::NEW_DATA ||
-        errRF == ErrorCodes::NEW_DATA || errRB == ErrorCodes::NEW_DATA ||
-        errBU == ErrorCodes::NEW_DATA || errFU == ErrorCodes::NEW_DATA /*||
-        errBL == ErrorCodes::NEW_DATA || errFL == ErrorCodes::NEW_DATA*/)
-    {
-        return ErrorCodes::NEW_DATA;
-    }
+	if (errLB == ErrorCodes::NEW_DATA || errLF == ErrorCodes::NEW_DATA ||
+		errRF == ErrorCodes::NEW_DATA || errRB == ErrorCodes::NEW_DATA ||
+		errBU == ErrorCodes::NEW_DATA || errFU == ErrorCodes::NEW_DATA /*||
+		errBL == ErrorCodes::NEW_DATA || errFL == ErrorCodes::NEW_DATA*/)
+	{
+		return ErrorCodes::NEW_DATA;
+	}
 
-    return ErrorCodes::NO_NEW_DATA;
+	return ErrorCodes::NO_NEW_DATA;
 }
 
 void TofSensors::DisableUpdate(void) {
-    updateEnabled = false;
+	_UPDATE_ENABLED = false;
 }
 
 void TofSensors::EnableUpdate(void) {
-    updateEnabled = true;
+	_UPDATE_ENABLED = true;
 }
 
 uint16_t TofSensors::GetRange(TofType sensor) {
-    EnableUpdate();
+	EnableUpdate();
 
-    switch (sensor)
-    {
-    case TofType::LEFT_BACK:
-        return leftBack.GetRange();
-        break;
-    
-    case TofType::LEFT_FRONT:
-        return leftFront.GetRange();
-        break;
-    
-    case TofType::RIGHT_FRONT:
-        return rightFront.GetRange();
-        break;
+	switch (sensor) {
+	case TofType::LEFT_BACK:
+		return leftBack.GetRange();
+		break;
 
-    case TofType::RIGHT_BACK:
-        return rightBack.GetRange();
-        break;
+	case TofType::LEFT_FRONT:
+		return leftFront.GetRange();
+		break;
 
-    case TofType::BACK:
-        return back.GetRange();
-        break;
-    
-    case TofType::FRONT:
-        return front.GetRange();
-        break;
+	case TofType::RIGHT_FRONT:
+		return rightFront.GetRange();
+		break;
 
-    case TofType::BACK_X64:
-        return back_x64.GetRange();
-        break;
-    
-    case TofType::FRONT_X64:
-        return front_x64.GetRange();
-        break;
-    
-    default:
-        return 0;
-        break;
-    }
+	case TofType::RIGHT_BACK:
+		return rightBack.GetRange();
+		break;
+
+	case TofType::BACK:
+		return back.GetRange();
+		break;
+
+	case TofType::FRONT:
+		return front.GetRange();
+		break;
+
+	case TofType::BACK_X64:
+		return back_x64.GetRange();
+		break;
+
+	case TofType::FRONT_X64:
+		return front_x64.GetRange();
+		break;
+
+	default:
+		return 0;
+		break;
+	}
 }
 
 TofStatus TofSensors::GetStatus(TofType sensor) {
-    EnableUpdate();
-    
-    switch (sensor)
-    {
-    case TofType::LEFT_BACK:
-        return leftBack.GetStatus();
-        break;
-    
-    case TofType::LEFT_FRONT:
-        return leftFront.GetStatus();
-        break;
-    
-    case TofType::RIGHT_FRONT:
-        return rightFront.GetStatus();
-        break;
+	EnableUpdate();
 
-    case TofType::RIGHT_BACK:
-        return rightBack.GetStatus();
-        break;
+	switch (sensor) {
+	case TofType::LEFT_BACK:
+		return leftBack.GetStatus();
+		break;
 
-    case TofType::BACK:
-        return back.GetStatus();
-        break;
-    
-    case TofType::FRONT:
-        return front.GetStatus();
-        break;
+	case TofType::LEFT_FRONT:
+		return leftFront.GetStatus();
+		break;
 
-    case TofType::BACK_X64:
-        return back_x64.GetStatus();
-        break;
-    
-    case TofType::FRONT_X64:
-        return front_x64.GetStatus();
-        break;
-    
-    default:
-        return TofStatus::TIMEOUT;
-        break;
-    }
+	case TofType::RIGHT_FRONT:
+		return rightFront.GetStatus();
+		break;
+
+	case TofType::RIGHT_BACK:
+		return rightBack.GetStatus();
+		break;
+
+	case TofType::BACK:
+		return back.GetStatus();
+		break;
+
+	case TofType::FRONT:
+		return front.GetStatus();
+		break;
+
+	case TofType::BACK_X64:
+		return back_x64.GetStatus();
+		break;
+
+	case TofType::FRONT_X64:
+		return front_x64.GetStatus();
+		break;
+
+	default:
+		return TofStatus::TIMEOUT;
+		break;
+	}
 }
 
 bool TofSensors::IsDataNew(TofType sensor) {
-    EnableUpdate();
+	EnableUpdate();
 
-    switch (sensor)
-    {
-    case TofType::LEFT_BACK:
-        return leftBack.IsDataNew();
-        break;
-    
-    case TofType::LEFT_FRONT:
-        return leftFront.IsDataNew();
-        break;
-    
-    case TofType::RIGHT_FRONT:
-        return rightFront.IsDataNew();
-        break;
+	switch (sensor) {
+	case TofType::LEFT_BACK:
+		return leftBack.IsDataNew();
+		break;
 
-    case TofType::RIGHT_BACK:
-        return rightBack.IsDataNew();
-        break;
+	case TofType::LEFT_FRONT:
+		return leftFront.IsDataNew();
+		break;
 
-    case TofType::BACK:
-        return back.IsDataNew();
-        break;
-    
-    case TofType::FRONT:
-        return front.IsDataNew();
-        break;
+	case TofType::RIGHT_FRONT:
+		return rightFront.IsDataNew();
+		break;
 
-    case TofType::BACK_X64:
-        return back_x64.IsDataNew();
-        break;
-    
-    case TofType::FRONT_X64:
-        return front_x64.IsDataNew();
-        break;
-    
-    default:
-        return false;
-        break;
-    }
+	case TofType::RIGHT_BACK:
+		return rightBack.IsDataNew();
+		break;
+
+	case TofType::BACK:
+		return back.IsDataNew();
+		break;
+
+	case TofType::FRONT:
+		return front.IsDataNew();
+		break;
+
+	case TofType::BACK_X64:
+		return back_x64.IsDataNew();
+		break;
+
+	case TofType::FRONT_X64:
+		return front_x64.IsDataNew();
+		break;
+
+	default:
+		return false;
+		break;
+	}
 }
 
 bool TofSensors::AnyTimeoutOccured(void) {
-    if (leftBack.TimeoutOccured() || leftFront.TimeoutOccured() || rightFront.TimeoutOccured() 
-        || rightBack.TimeoutOccured() || front.TimeoutOccured() || back.TimeoutOccured())
-        return true;
-    else 
-        return false;
+	if (leftBack.TimeoutOccured() || leftFront.TimeoutOccured() || rightFront.TimeoutOccured()
+		|| rightBack.TimeoutOccured() || front.TimeoutOccured() || back.TimeoutOccured())
+		return true;
+	else
+		return false;
 }
 
 int8_t TofSensors::CalculateLeftRightError(float angleError, uint8_t sideWallThreshold, uint8_t gapRobotWall) {
@@ -587,40 +575,40 @@ int8_t TofSensors::CalculateLeftRightError(float angleError, uint8_t sideWallThr
 }
 
 uint8_t TofSensors::GetWalls(bool rampInfront, bool rampBehind) {
-    uint8_t wallInfo = 0;
+	uint8_t wallInfo = 0;
 
-	if (leftBack.GetRange() < 150 
-		&& leftFront.GetRange() < 150) wallInfo |= (1<<3);	//Left
+	if (leftBack.GetRange() < 150
+		&& leftFront.GetRange() < 150) wallInfo |= (1 << 3);	// Left
 	if (rightBack.GetRange() < 150
-		&& rightFront.GetRange() < 150) wallInfo |= (1<<1);	//Right
-	if (back.GetRange() < 150 && !rampBehind) wallInfo |= (1<<2);	//Back
-	if (front.GetRange() < 150 && !rampInfront) wallInfo |= (1<<0);	//Front
+		&& rightFront.GetRange() < 150) wallInfo |= (1 << 1);	// Right
+	if (back.GetRange() < 150 && !rampBehind) wallInfo |= (1 << 2);	// Back
+	if (front.GetRange() < 150 && !rampInfront) wallInfo |= (1 << 0);	// Front
 
-    #ifdef DEBUG_SCAN
-        Serial.print("Wall Info: ");
-        Serial.print(wallInfo, BIN);
-        Serial.print("\tLB: ");
-        Serial.print(leftBack.GetRange());
-        Serial.print("\tLF: ");
-        Serial.print(leftFront.GetRange());
-        Serial.print("\tRF: ");
-        Serial.print(rightFront.GetRange());
-        Serial.print("\tRB: ");
-        Serial.print(rightBack.GetRange());
-        Serial.print("\tMF: ");
-        Serial.print(front.GetRange());
-        Serial.print("\tMB: ");
-        Serial.println(back.GetRange());
-    #endif
+	#ifdef DEBUG_SCAN
+		Serial.print("Wall Info: ");
+		Serial.print(wallInfo, BIN);
+		Serial.print("\tLB: ");
+		Serial.print(leftBack.GetRange());
+		Serial.print("\tLF: ");
+		Serial.print(leftFront.GetRange());
+		Serial.print("\tRF: ");
+		Serial.print(rightFront.GetRange());
+		Serial.print("\tRB: ");
+		Serial.print(rightBack.GetRange());
+		Serial.print("\tMF: ");
+		Serial.print(front.GetRange());
+		Serial.print("\tMB: ");
+		Serial.println(back.GetRange());
+	#endif
 
 	return wallInfo;
 }
 
 bool TofSensors::IsRampThere(bool side) {
-    if (!side)  
-        return front_x64.IsRamp();
-    else
-        return back_x64.IsRamp();
+	if (!side)
+		return front_x64.IsRamp();
+	else
+		return back_x64.IsRamp();
 }
 
 #ifdef _MSC_VER
