@@ -36,6 +36,9 @@ void TofParent::On(void) {
 bool TofParent::Init(void) { return false; }
 ErrorCodes TofParent::Read(void) { return ErrorCodes::ERROR; }
 uint16_t TofParent::GetRange(void) { return 0; }
+TofStatus TofParent::GetStatus(void) { return lastStatus; }
+bool TofParent::IsDataNew(void) { return newData; }
+bool TofParent::TimeoutOccured(void) { return timeoutOccured; }
 ErrorCodes TofParent::Stop(void) { return ErrorCodes::ERROR; }
 ErrorCodes TofParent::Continue(void) { return ErrorCodes::ERROR; }
 

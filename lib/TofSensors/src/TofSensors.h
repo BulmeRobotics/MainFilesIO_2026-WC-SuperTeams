@@ -60,21 +60,21 @@ class TofParent {
         *         OUT_OF_RANGE if the measurement was out of range.
         *         TIMEOUT if the sensor is in a timeout.
         */
-        virtual TofStatus GetStatus(void) { return lastStatus; }
+        virtual TofStatus GetStatus(void);
 
         /**
         * @brief  Method to check if a range value has yet been retrieved.
         * @return true if value is new.
         *         false if the value was already used.
         */
-        virtual bool IsDataNew(void) { return newData; }
+        virtual bool IsDataNew(void);
 
         /**
         * @brief  Method to check if a timeout has occurred.
         * @return true if a timeout occurred.
         *         false if no timeout occurred.
         */
-        virtual bool TimeoutOccured(void) { return timeoutOccured; }
+        virtual bool TimeoutOccured(void);
 
         /**
         * @brief  Stops the ranging of the sensor.
