@@ -219,7 +219,8 @@ public: // --- PUBLIC ---
     ErrorCodes RestartCheckpoint(void);
 
     /**
-     * @brief call when Bumper is repeatedly triggered -> locks the current route
+     * @brief call when Bumper is triggered -> increases tile cost & locks the current route if desired
+     * @param reset true...locks current route / false...increase cost of tile
      * @return returns if operation was succesful
      */
     ErrorCodes Bumper(bool reset = true);
