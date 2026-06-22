@@ -11,11 +11,11 @@
 #pragma region DEBUG
 #endif
 
-//#define DEBUG_RAMP
+// #define DEBUG_RAMP
 // #define DEBUG_RAMP_ARRAY
-// #define DEBUG_RAMP_DATASET
+#define DEBUG_RAMP_DATASET
 // #define DEBUG_X64
-//#define DEBUG_DRIVING
+// #define DEBUG_DRIVING
 // #define DEBUG_TURN
 // #define DEBUG_PID
 // #define DEBUG_TURN_PID
@@ -698,11 +698,14 @@ void Driving::ClassifyAndFinishRamp(void){
 	}
 	else FinishRamp(80);
 
+	// Steady-state incline angle used for the geometry decomposition below. Computed here, before
+	// the sample array is cleared (ComputeMedianIncline sorts arrIncline in place).
+	medianIncline = ComputeMedianIncline();
+
 	#ifdef DEBUG_RAMP_DATASET
 	// Ramp dataset line. Direction is read from the sign of Mean; Dur measures incline-onset
 	// (~10 deg) to flat-out (<=4 deg), not base-to-top.
-	float medianIncline = ComputeMedianIncline();
-	float gyroVar       = (arrInclineIndex > 1) ? (aggregatedIncline / (arrInclineIndex - 1)) : 0.0f;
+	float gyroVar = (arrInclineIndex > 1) ? (aggregatedIncline / (arrInclineIndex - 1)) : 0.0f;
 	Serial.print(F("RAMPDATA | Typ:"));
 	Serial.print(_STAIR ? F("Stair") : F("Ramp"));
 	Serial.print(F(" Dst:"));    Serial.print(rawEncoderDistance, 1);
@@ -745,14 +748,14 @@ void Driving::CalculateRampGeometry(bool rampUp, bool rampDown, bool isStair){
 	// Applies K/d correction factors and computes rampHypotenuse, rampHeight, rampLength.
 	if (rampUp && !isStair) {
 		rampEncoderDistance = rampEncoderDistance * RAMP_UP_K + RAMP_UP_D;
-		rampAngle = maxRampIncline;
+		rampAngle = medianIncline;	// Median is accurate vs tape; K/D are fit to the raw hypotenuse
 		#ifdef DEBUG_RAMP
 		Serial.print("\tRAMP UP");
 		#endif
 	}
 	else if (rampDown && !isStair) {
 		rampEncoderDistance = rampEncoderDistance * RAMP_DOWN_K + RAMP_DOWN_D;
-		rampAngle = maxRampIncline + 2;
+		rampAngle = medianIncline;	// Median (negative for down) — accurate, no fudge offset needed
 		#ifdef DEBUG_RAMP
 		Serial.print("\tRAMP DOWN");
 		#endif
@@ -773,7 +776,7 @@ void Driving::CalculateRampGeometry(bool rampUp, bool rampDown, bool isStair){
 	}
 	else rampEncoderDistance = 0;
 
-	if (!isStair) rampEncoderDistance *= 0.95;
+	// Note: the former (!isStair) *= 0.95 fudge is removed — it is folded into the new RAMP_*_K.
 
 	rampHypotenuse = rampEncoderDistance;
 	rampHeight     = rampEncoderDistance * sinf(rampAngle * PI / 180.0);

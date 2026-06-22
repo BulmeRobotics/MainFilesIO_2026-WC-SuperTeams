@@ -249,10 +249,10 @@ class Driving {
         static constexpr uint8_t RAMP_SPEED_DOWN         = 25;
         static constexpr uint8_t RAMP_SUB_DISTANCE       = 30;
         static constexpr float   RAMP_STAIRS_THRESHOLD   = 60.0f;
-        static constexpr float   RAMP_UP_K               = 0.9f;
-        static constexpr float   RAMP_UP_D               = 30.0f;
-        static constexpr float   RAMP_DOWN_K             = 1.25f;
-        static constexpr float   RAMP_DOWN_D             = 20.0f;
+        static constexpr float   RAMP_UP_K               = 0.778f;	// Joint fit over 1+2 tile up data (hypotenuse)
+        static constexpr float   RAMP_UP_D               = 16.9f;
+        static constexpr float   RAMP_DOWN_K             = 1.157f;	// Joint fit over 1+2 tile down data (hypotenuse)
+        static constexpr float   RAMP_DOWN_D             = -28.9f;
         static constexpr float   STAIR_UP_K              = 0.7f;
         static constexpr float   STAIR_UP_D              = 0.0f;
         static constexpr float   STAIR_DOWN_K            = 1.15f;
@@ -351,6 +351,7 @@ class Driving {
         float    maxRampIncline;
         int16_t  currentRobotHeight;
         float    avgIncline             = 0.0f;
+        float    medianIncline          = 0.0f;   // Median incline (steady-state angle); used for ramp geometry decomposition
         float    aggregatedIncline      = 0.0f;   // Total-variation jitter metric from CheckStairRamp; basis for logged GVar
         float    arrIncline[INCLINE_ARRAY_SIZE] = { 0.0f };
         uint16_t arrInclineIndex        = 0;
