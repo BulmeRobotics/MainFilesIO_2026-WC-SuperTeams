@@ -60,6 +60,7 @@ private:
     // Enable command state per camera (allows concurrent non-blocking left/right updates)
     bool _pending = false;
     bool _enTarget = false;
+    bool _allowEN = false;
     uint32_t _enStart = 0;
     String _rxAsync = "";
 
@@ -77,6 +78,13 @@ private:
      */
     String Recieve(uint32_t waittime = 0);
 
+
+    /**
+     * @brief Start Camera Reset
+     * @return success
+     */
+    bool ResetCam();
+    
 public:
 
     Vcameras(Stream* debugPort = nullptr) : _debug_ifc(debugPort) {}
@@ -127,4 +135,6 @@ public:
     bool IsAlert(){
         return _Alert;
     }
+
+    void AllowEnable(){ _allowEN = true; }
 };

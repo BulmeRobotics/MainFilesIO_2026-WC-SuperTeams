@@ -317,6 +317,7 @@ while (true) {
         }
         currentRunState = RunState::DRIVE;
         robot.StartDrive(false);
+        cam.AllowEnable();
         break;
 
       case Instructionset::ramp:

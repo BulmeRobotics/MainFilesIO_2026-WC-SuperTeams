@@ -151,8 +151,16 @@ ErrorCodes Vcameras::Enable(bool en, bool blocking){
 // Handle Reset
 //---------------------------------------------------------------------------------------------------------
 
+bool Vcameras::ResetCam(){
+    _victimFound = true;
+    _timeFound = millis();
+    _allowEN = false;
+    Enable(false, false);
+    return true;
+}
+
 ErrorCodes Vcameras::HandleReset(){
-    if(!_victimFound) return ErrorCodes::OK;
+    if(!_victimFound || !_allowEN) return ErrorCodes::OK;
     if(_timeFound + DEACT_TIME_VICTIM < millis()){
         _victimFound = false;
         //Enable cams
@@ -202,14 +210,13 @@ ErrorCodes Vcameras::Update(bool onRed){
     str = Recieve();
     if(str[0] == ' ') return ErrorCodes::OK;    //Is data valid?
 
+    ResetCam();
+
     //Determine victim side
     if(str[0] == 'L') side = ErrorCodes::left;
     else if(str[0] == 'R') side = ErrorCodes::right;
     else return ErrorCodes::invalid;
     
-    //Send Cam Recieved Back
-    const char* retBuff = "<R>";
-    _cam->print(retBuff);
 
     //Determine Victim Type
     char victim = str[1];
@@ -229,11 +236,6 @@ ErrorCodes Vcameras::Update(bool onRed){
 
     //Stops robot
     _drivetrain->Stop();
-
-    //Reset cams
-    _victimFound = true;
-    _timeFound = millis();
-    Enable(false, false);
 
     //Get Amount of dropped Rescue Packs
     uint8_t amount;
