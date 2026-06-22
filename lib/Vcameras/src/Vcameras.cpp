@@ -207,6 +207,10 @@ ErrorCodes Vcameras::Update(bool onRed){
     else if(str[0] == 'R') side = ErrorCodes::right;
     else return ErrorCodes::invalid;
     
+    //Send Cam Recieved Back
+    const char* retBuff = "<R>";
+    _cam->print(retBuff);
+
     //Determine Victim Type
     char victim = str[1];
 
