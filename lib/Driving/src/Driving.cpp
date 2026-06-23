@@ -768,14 +768,14 @@ void Driving::CalculateRampGeometry(bool rampUp, bool rampDown, bool isStair){
 	}
 	else if (rampUp && isStair) {
 		rampEncoderDistance = rampEncoderDistance * STAIR_UP_K + STAIR_UP_D;
-		rampAngle = avgIncline + STAIR_UP_ANGLE_OFFSET;
+		rampAngle = medianIncline;	// Median is accurate to ~1deg on stairs; K/D fit on the raw hypotenuse
 		#ifdef DEBUG_RAMP
 		Serial.print("\tSTAIR UP");
 		#endif
 	}
 	else if (rampDown && isStair) {
 		rampEncoderDistance = rampEncoderDistance * STAIR_DOWN_K + STAIR_DOWN_D;
-		rampAngle = avgIncline + STAIR_DOWN_ANGLE_OFFSET;
+		rampAngle = medianIncline;	// Median (negative for down) — accurate, no fudge offset
 		#ifdef DEBUG_RAMP
 		Serial.print("\tSTAIR DOWN");
 		#endif
