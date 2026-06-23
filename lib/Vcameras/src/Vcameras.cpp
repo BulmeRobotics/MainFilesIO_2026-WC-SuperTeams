@@ -177,9 +177,16 @@ ErrorCodes Vcameras::HandleReset(){
 ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
     if(!_connected) {if(_debug_ifc!=nullptr) _debug_ifc->println("Cams no connection");return ErrorCodes::no_connection;}
 
-    if(onRamp){
+    if(onRamp != _oldOnRamp){
+        if(onRamp && !_oldOnRamp) {
+            ResetCam();
+            _ui->ShowPopup("Ramp - disable Cam",ErrorCodes::info);
+        }
+        else _ui->ShowPopup("Ramp end - enable Cam", ErrorCodes::info,3);
         _oldOnRamp = onRamp;
     }
+
+    if(onRamp) return ErrorCodes::ramp;
 
     // Progress pending async enable commands for both cameras each cycle.
     EnableNonBlockingStep();

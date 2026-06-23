@@ -502,7 +502,7 @@ void cyclicRunTask() {
   Serial.print("\tCAM:"); Serial.println(millis() - _t);
   #else
   //uint8_t buffer = tof.GetWalls();
-  cam.Update(cs.GetFloor() == TileType::dangerZone);
+  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp());
   #endif
 
   //Black Tile Handling
