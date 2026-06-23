@@ -27,13 +27,14 @@
 enum class Instructionset : uint8_t {
     T_North, T_East, T_South, T_West,	//Desired Orientation
     D_Forward, ramp,					//Move
-    undefined, Overflow, solvMap, reset,//Errors
+    unreachable, undefined, Overflow, solvMap, reset,//Errors
     FinishedInstructions, MazeFinished	//Finished! :)
 };
 
 struct Tile {
     int16_t x, y, z = 0;
     uint8_t weight = 1;
+    uint8_t difficulty = 0;
     TileType type = TileType::inactive;
     int16_t north = -1, east = -1, south = -1, west = -1, up = -1, down = -1;
     bool victim = false;
@@ -48,6 +49,27 @@ struct OpenItem {
 
 class Mapping {
 private:    // --- PRIVATE ---
+
+#ifdef _MSC_VER
+#pragma region Panic Mode
+#endif
+
+    static constexpr uint8_t RELOCALIZE_REQUIRED_MATCHES = 3;
+
+    // -- Variables --
+    bool _PANIC_MODE_ACTIVE = false;
+    uint16_t _panicCandidates[MAX_TILES];
+    uint16_t _panicCandidateCount = 0;
+    uint8_t _panicConfidence = 0;
+    uint8_t _currentPanicWalls = 0;
+    bool _panicHasMoved = true; // Verhindert, dass reines Drehen die Konfidenz erhöht
+
+    // --- Panic Mode Methoden ---
+    bool DoesTileMatchWalls(uint16_t tileIndex, uint8_t absWalls);
+    void UpdateRelocalization(uint8_t absWalls);
+    void MovePanicCandidates(Orientations dir);
+    Instructionset GetPanicInstruction();
+
 
 #ifdef _MSC_VER
 #pragma region helpers
@@ -252,6 +274,7 @@ public: // --- PUBLIC ---
     Tile* GetTiles() { return tiles; }
     uint16_t GetCurrentPosition() { return currentPosition; }
     Orientations GetCurrentOrientation() { return currentOrientation; }
+    bool IsPanicMode() { return _PANIC_MODE_ACTIVE; }
 };
 
 #endif

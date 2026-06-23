@@ -196,6 +196,15 @@ void UserInterface::ConstructRunMenu() {
     
     display.setCursor(MAP_AREA_WIDTH + 15, 260);
     display.print("State:");
+
+    // --- Mapping Info ---
+    display.setCursor(MAP_AREA_WIDTH + 15, 330);
+    display.print("MAPPING");
+    display.drawLine(MAP_AREA_WIDTH + 15, 355, 780, 245, TEXT_COLOR);
+
+    display.setCursor(MAP_AREA_WIDTH + 15, 370);
+    display.setTextColor(0x07E0, HL_COLOR);
+    display.print("NORMAL");
 }
 
 void UserInterface::UpdateRunMenu() {
@@ -271,6 +280,25 @@ void UserInterface::UpdateRunMenu() {
             display.print("NORMAL   ");
         }
     }
+
+    // -- Update Mapping States --
+    display.setCursor(MAP_AREA_WIDTH + 15, 370);
+    bool curPanicModeActive = p_mapping->IsPanicMode();
+    if(curPanicModeActive != _lastPanicModeActive){
+        if(curPanicModeActive){
+            display.setTextColor(0xF800, HL_COLOR);
+            display.print("PANIC ");
+        }
+        else{
+            display.setTextColor(0x07E0, HL_COLOR);
+            display.print("NORMAL");
+            ShowPopup("Position relocated", ErrorCodes::info);
+        }
+    }
+    _lastPanicModeActive = curPanicModeActive;
+    
+    
+
 
     // 3. KARTE ZEICHNEN
     DrawMap();

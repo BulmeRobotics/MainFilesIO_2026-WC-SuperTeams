@@ -323,6 +323,11 @@ while (true) {
         //Maze Finished Logic
         currentRunState = RunState::END;
         break;
+
+      case Instructionset::unreachable:
+        currentRunState = RunState::GET_INSTRUCTIONS;
+        UI.ShowPopup("LOST MAPPING - PANIC MODE", ErrorCodes::ERROR, 5);
+        break;
       
       default:
         break;

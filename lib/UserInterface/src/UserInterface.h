@@ -146,6 +146,8 @@ private:
     bool _lastCamLeftEn = false;
     bool _lastCamRightEn = false;
 
+    bool _lastPanicModeActive = false;
+
     // --- Icon Drawing Functions ---
     static void DrawIconLocation(GigaDisplay_GFX& display, uint16_t cx, uint16_t cy);
     static void DrawIconSensor(GigaDisplay_GFX& display, uint16_t cx, uint16_t cy);
