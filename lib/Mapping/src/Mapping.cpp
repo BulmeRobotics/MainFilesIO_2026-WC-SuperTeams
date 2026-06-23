@@ -936,6 +936,7 @@ ErrorCodes Mapping::Bumper(bool reset) {
 }
 
 ErrorCodes Mapping::RestartCheckpoint() {
+    _PANIC_MODE_ACTIVE = false;
     // 1. Saubere Karte und Position aus dem Backup wiederherstellen
     memcpy(tiles, backupTiles, sizeof(tiles));
     currentPosition = lastCheckpointPosition;
