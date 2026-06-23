@@ -29,7 +29,7 @@ private:
     static constexpr uint8_t CAMERAR_PIN_EN = 28;   //GPIO3 CM5 -> RASPI GPIO22
 
     static constexpr uint32_t CAM_TIMEOUT = 300;
-    static constexpr uint32_t CAM_TIMEOUT_INIT = 60000;
+    static constexpr uint32_t CAM_TIMEOUT_INIT = 30000;
 
     //Serial
     static constexpr UART* _cam = &Serial2;
