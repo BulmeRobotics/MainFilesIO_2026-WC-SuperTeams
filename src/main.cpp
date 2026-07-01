@@ -460,7 +460,9 @@ while (true) {
       cam.Enable(false);
       currentMenuState = RobotState::ABOUT;
       UI.Update();
-      UI.Signal(ErrorCodes::BUZZER_LED, 1000,1000,5);
+      //Signal End of Run 
+      UI.Signal(ErrorCodes::BUZZER_LED, 1000,1000,2);
+      UI.Signal(ErrorCodes::LED, 1000,1000, 3);
     }
   } 
   
