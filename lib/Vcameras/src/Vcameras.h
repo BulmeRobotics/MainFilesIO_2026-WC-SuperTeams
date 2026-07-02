@@ -82,15 +82,17 @@ private:
     String Recieve(uint32_t waittime = 0);
 
 
+
+    
+public:
+
+    Vcameras(Stream* debugPort = nullptr) : _debug_ifc(debugPort) {}
+
     /**
      * @brief Start Camera Reset
      * @return success
      */
     bool ResetCam();
-    
-public:
-
-    Vcameras(Stream* debugPort = nullptr) : _debug_ifc(debugPort) {}
 
     /**
      * @brief Initializes Cam class. Tries connecting to cameras

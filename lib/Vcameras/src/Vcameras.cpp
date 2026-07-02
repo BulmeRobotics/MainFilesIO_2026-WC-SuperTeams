@@ -157,10 +157,10 @@ ErrorCodes Vcameras::Enable(bool en, bool blocking){
 //---------------------------------------------------------------------------------------------------------
 
 bool Vcameras::ResetCam(){
-    _victimFound = true;
     _timeFound = millis();
     _allowEN = false;
-    Enable(false, false);
+    if(!_victimFound) Enable(false, false);
+    _victimFound = true;
     return true;
 }
 

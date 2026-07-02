@@ -591,10 +591,12 @@ void ExecTileBehavior(TileAction action){
   switch(action){
     case TileAction::REVERSE:
       robot.EndDrive();	//Stop Robot
-      //UI.signal.buzzer_pulse(5, 3);	//Signal BLACK
+      
       mapper.Move(true);
       mapper.SetTile(0x0F, TileType::black);
       mapper.Move(false);	//Move robot Backwards
+
+      cam.ResetCam();
 
       //DRIVE BACKWARDS FUNCTION
       robot.ReverseBlackTile();
