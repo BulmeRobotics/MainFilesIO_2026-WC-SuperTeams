@@ -251,6 +251,12 @@ while (true) {
 
     cyclicRunTask();  //Cyclic Run Tasks
 
+    // Checkpoint-reset recovery: the black-button ISR latches _CHECKPOINT=stop and sets
+    // CHECKPOINT_RESET, but a state handler (e.g. ramp finish -> SCAN) can clobber currentRunState
+    // in the same iteration and skip the reset, leaving _CHECKPOINT stuck at stop -> button dead for
+    // the rest of the run. Re-forcing it here turns a clobber into a one-iteration delay.
+    if (_CHECKPOINT == ErrorCodes::stop) currentRunState = RunState::CHECKPOINT_RESET;
+
     if (currentRunState == RunState::SETTILE) {
       UI.Signal(ErrorCodes::BUZZER, 5, 0, 1);
 			mapper.SetTile(tof.GetWalls(), cs.GetFloor());
