@@ -58,8 +58,16 @@ ErrorCodes Driving::StartTurn(float angle) {
 }
 
 ErrorCodes Driving::ControlTurn(float angle) {
+	// Transient camera alert (still classifying) or confirmed victim mid-turn both cap the turn speed
+	bool camAlert = _CAM_ALERT_TURN || p_cams->IsAlert();
+	if (camAlert != _LAST_CAM_ALERT_TURN) {
+		integralTurnError = 0.0f;	// clear PID state on ceiling transition to avoid output kick
+		ts_lastTurnPID    = 0;
+	}
+	_LAST_CAM_ALERT_TURN = camAlert;
+
 	// Check if the turn takes too long, e.g. when stuck on a bumper
-	if (_CAM_ALERT_TURN) maxTurnTime = 10000;
+	maxTurnTime = camAlert ? 10000 : DEFAULT_MAX_TURN_TIME;
 	if (((millis() - ts_startTime) >= maxTurnTime))	turnTimeout = true;
 	else turnTimeout = false;
 
@@ -82,7 +90,7 @@ ErrorCodes Driving::ControlTurn(float angle) {
 		float derivative = (error - turnLastError) / dt;
 		float rawOutput  = PID_TURN.P * error + PID_TURN.I * integralTurnError + PID_TURN.D * derivative;
 
-		int8_t limit = _CAM_ALERT_TURN ? TURN_CAM_SPEED : (_TURN_180_DEGREE ? TURN_180_SPEED : TURN_MAX_SPEED);
+		int8_t limit = camAlert ? TURN_CAM_SPEED : (_TURN_180_DEGREE ? TURN_180_SPEED : TURN_MAX_SPEED);
 		if (abs(rawOutput) < (float)limit) integralTurnError += error * dt;
 		turnLastError = error;
 

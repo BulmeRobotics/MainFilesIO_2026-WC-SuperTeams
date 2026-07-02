@@ -554,6 +554,10 @@ void cyclicRunTask() {
 	if(cs.GetAlert() && !cs.Freeze())
 		robot.SetSlowSpeed(true);
 
+  //Drive Slower if a camera is alerting
+	if(cam.IsAlert())
+		robot.SetSlowSpeed(true);
+
   //Reset to std speed mod if nth is on ALERT
   if(!cs.GetAlert() && !cam.IsAlert()) robot.SetSlowSpeed(false);
 

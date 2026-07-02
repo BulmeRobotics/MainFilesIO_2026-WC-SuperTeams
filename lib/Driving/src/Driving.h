@@ -341,6 +341,7 @@ class Driving {
         bool              _TURNING           = true;
         bool              _SLOW_SPEED        = false;
         bool              _CAM_ALERT_TURN    = false;
+        bool              _LAST_CAM_ALERT_TURN = false;
         bool              _CAM_VICTIM        = false;
         bool              _TURN_180_DEGREE   = false;
         bool              _DRIVE_TIMEOUT     = false;
