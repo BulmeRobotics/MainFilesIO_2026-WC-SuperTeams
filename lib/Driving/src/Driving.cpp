@@ -90,7 +90,7 @@ ErrorCodes Driving::ControlTurn(float angle) {
 		float derivative = (error - turnLastError) / dt;
 		float rawOutput  = PID_TURN.P * error + PID_TURN.I * integralTurnError + PID_TURN.D * derivative;
 
-		int8_t limit = camAlert ? TURN_CAM_SPEED : (_TURN_180_DEGREE ? TURN_180_SPEED : TURN_MAX_SPEED);
+		int8_t limit = _TURN_180_DEGREE ? TURN_180_SPEED : (camAlert ? TURN_CAM_SPEED : TURN_MAX_SPEED);	// 180° turns keep their fixed ceiling regardless of camera alert
 		if (abs(rawOutput) < (float)limit) integralTurnError += error * dt;
 		turnLastError = error;
 
