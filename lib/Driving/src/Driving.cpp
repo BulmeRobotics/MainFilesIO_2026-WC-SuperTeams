@@ -439,6 +439,42 @@ ErrorCodes Driving::EndDrive(void) {
 	return ErrorCodes::OK;
 }
 
+// Blocking straight drive over a fixed distance; reuses run-time sensor selection, does not touch the map
+ErrorCodes Driving::DriveDistanceBlocking(float distance, int8_t speed) {
+	bool  reverse = distance < 0.0f;
+	float mag     = fabs(distance);
+
+	StartDrive(false);	// selects the best reference sensor, resets encoder, sets drive timers/flags
+
+	// ToF selection assumes forward motion — in reverse the wheel encoder is the only valid reference
+	if (reverse) {
+		sensor.type = ReferenceObj::ENCODER;
+		p_drivetrain->EnableEncoder();
+		p_drivetrain->ResetEncoder();
+	}
+
+	// Derive the stop threshold from the requested distance, matching CheckDrive's sign conventions
+	switch (sensor.type) {
+		case ReferenceObj::FRONT:	nextTargetDistance = (sensor.front > mag) ? sensor.front - (uint16_t)mag : 0; break;
+		case ReferenceObj::BACK:	nextTargetDistance = sensor.back + (uint16_t)mag; break;
+		default:					nextTargetDistance = (uint16_t)mag; break;	// ENCODER
+	}
+
+	int8_t signedSpeed = reverse ? -(int8_t)abs(speed) : (int8_t)abs(speed);
+	float  heading     = p_gyro->GetAngle(GyroAxles::Axis_X);	// hold the heading captured at call time
+
+	// This blocking loop bypasses cyclicMainTask, so refresh the ToF sensors here (as StartAlign does)
+	while (true) {
+		p_tof->Update();
+		if (CheckDrive() == ErrorCodes::SCAN_DRIVE) break;	// reference sensor crossed the target
+		if (ControlDrive(signedSpeed, heading) == ErrorCodes::TIMEOUT) break;	// stall guard tripped
+		delay(1);
+	}
+
+	EndDrive();
+	return ErrorCodes::OK;
+}
+
 ErrorCodes Driving::TimeoutDrive(void) {
 	EndDrive();
 	StartAlign();

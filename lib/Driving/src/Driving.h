@@ -134,6 +134,22 @@ class Driving {
         ErrorCodes EndDrive(void);
 
         /**
+         * @brief  Blocking straight drive over a fixed distance, driven by the drive PID.
+         * @details Reuses the run-time reference selection: StartDrive picks the best
+         *          sensor (front/back ToF, encoder fallback) and the stop threshold is
+         *          derived from the requested distance using that sensor's sign
+         *          convention (see CheckDrive). Holds the heading captured at call time.
+         *          A negative distance drives in reverse; because ToF selection assumes
+         *          forward motion, reverse forces the wheel encoder as the reference.
+         *          Does NOT align or update the map, so it is safe for standalone
+         *          maneuvers (e.g. the Technical Challenge).
+         * @param  distance  Distance to travel in millimetres; negative drives reverse.
+         * @param  speed     Base speed 0–100 (default 50); sign is applied internally.
+         * @return OK after completion (target reached or a drive timeout stall guard).
+         */
+        ErrorCodes DriveDistanceBlocking(float distance, int8_t speed = 50);
+
+        /**
          * @brief  Recovers from a drive timeout: stops, aligns, and adjusts to the front wall.
          * @return OK always.
          */
