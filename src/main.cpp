@@ -17,6 +17,8 @@
 #define UPPER_LEVEL_HEIGHT 230
 #define LOWER_LEVEL_HEIGHT -100
 
+#define CAM_ALERT_SLOW_BUDGET 1500	// ms a continuous cam alert may hold slow speed; a stuck alert must not keep the robot crawling
+
 // #define PID_TUNE_MODE        // Uncomment to enable drive-forever PID tuning harness
 // #define TURN_TUNE_MODE       // Uncomment to enable alternating-90° turn PID tuning harness
 // #define DEBUG_LOOP_TIMING    // Uncomment to print per-subsystem timing in cyclicMainTask/cyclicRunTask
@@ -79,6 +81,7 @@ RobotState currentMenuState;
 RunState currentRunState;
 uint32_t lastButtonPressGray;
 uint32_t ts_lastCycle;
+uint32_t ts_camAlertStart;
 
 //----Flags----
 bool _ROBOT_TURNING = false;
@@ -563,9 +566,17 @@ void cyclicRunTask() {
 	if(cs.GetAlert() && !cs.Freeze())
 		robot.SetSlowSpeed(true);
 
-  //Drive Slower if a camera is alerting
-	if(cam.IsAlert())
-		robot.SetSlowSpeed(true);
+  //Drive Slower if a camera is alerting — bounded by a time budget: if classification
+  //hasn't finished after CAM_ALERT_SLOW_BUDGET ms of crawling, more crawling won't help.
+  //The color alert above is a safety signal and is never overridden.
+	if(cam.IsAlert()){
+		if(ts_camAlertStart == 0) ts_camAlertStart = millis();
+		if(millis() - ts_camAlertStart <= CAM_ALERT_SLOW_BUDGET)
+			robot.SetSlowSpeed(true);
+		else if(!cs.GetAlert())
+			robot.SetSlowSpeed(false);	// budget spent — the camera alone no longer holds slow speed
+	}
+	else ts_camAlertStart = 0;	// alert released — re-arm the budget
 
   //Reset to std speed mod if nth is on ALERT
   if(!cs.GetAlert() && !cam.IsAlert()) robot.SetSlowSpeed(false);

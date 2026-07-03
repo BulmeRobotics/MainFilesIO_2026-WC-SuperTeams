@@ -309,6 +309,12 @@ class Driving {
         static constexpr uint16_t STALL_CHECK_INTERVAL = 300;   // ms between rotation-progress checks
         static constexpr float    STALL_MIN_PROGRESS   = 3.0f;  // ° per interval below which the turn counts as stalled
 
+        //----Drive stall escalation----
+        // A slow-speed drive can stall on a floor obstacle: forward speed is open-loop (the drive
+        // PID only steers), so the slow-speed override is suspended until progress resumes (tune on hardware).
+        static constexpr uint16_t DRIVE_STALL_CHECK_INTERVAL = 300;   // ms between progress checks
+        static constexpr uint16_t DRIVE_STALL_MIN_PROGRESS   = 8;    // mm per interval below which the drive counts as stalled (must stay above ToF noise)
+
         //----Bumper config----
         static constexpr uint8_t BUMPER_TRYS      = 5;
         static constexpr uint8_t BUMPER_LEFT_PIN  = 47;
@@ -316,6 +322,7 @@ class Driving {
 
         //----State defaults----
         static constexpr uint32_t DEFAULT_MAX_DRIVE_TIME      = 5000;
+        static constexpr uint32_t SLOW_MAX_DRIVE_TIME         = 6000;  // extended drive timeout while slow-speed is active (a slow tile takes longer than 5s)
         static constexpr uint16_t DEFAULT_MAX_ENCODER_TIME    = 3000;
         static constexpr uint16_t DEFAULT_MAX_TURN_TIME       = 3000;
         static constexpr uint16_t DEFAULT_RAMP_CHECK_DURATION = 1000;
@@ -415,6 +422,11 @@ class Driving {
         float    stallCheckAngle  = 0.0f;
         bool     _STALL_BOOST     = false;
         bool     _TURN_SATURATED  = false;
+
+        //----Drive stall state----
+        uint32_t ts_driveStallCheck  = 0;
+        uint16_t driveStallRef       = 0;
+        bool     _DRIVE_STALL_BOOST  = false;
         #ifdef _MSC_VER
             #pragma endregion
             #pragma region Helpers

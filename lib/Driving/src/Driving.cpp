@@ -287,6 +287,8 @@ ErrorCodes Driving::StartDrive(bool rampDown) {
 	filteredLR = 0.0f;
 	maxDriveTime = DEFAULT_MAX_DRIVE_TIME;
 	ts_driveStartTime = millis();
+	ts_driveStallCheck = 0;
+	_DRIVE_STALL_BOOST = false;
 
 	sensor = GetOptimalSensor(rampDown);
 	lastTargetDistance = nextTargetDistance;
@@ -319,7 +321,30 @@ uint16_t Driving::CalculateNextTargetDistance(void) {
 }
 
 ErrorCodes Driving::ControlDrive(int8_t driveSpeed, float angle) {
-	if (_SLOW_SPEED)
+	// Stall escalation: slow-speed with no forward progress means the robot is stuck
+	// (e.g. on a speed bump) — suspend the slow-speed override until progress resumes
+	if (_SLOW_SPEED && !_ON_RAMP) {
+		uint16_t ref;
+		if      (sensor.type == ReferenceObj::ENCODER) ref = p_drivetrain->GetEncoderDistance();
+		else if (sensor.type == ReferenceObj::FRONT)   ref = p_tof->GetRange(TofType::FRONT);
+		else                                           ref = p_tof->GetRange(TofType::BACK);
+
+		if (ts_driveStallCheck == 0) {
+			ts_driveStallCheck = millis();
+			driveStallRef      = ref;
+		}
+		else if (millis() - ts_driveStallCheck >= DRIVE_STALL_CHECK_INTERVAL) {
+			_DRIVE_STALL_BOOST = abs((int32_t)ref - (int32_t)driveStallRef) < DRIVE_STALL_MIN_PROGRESS;
+			ts_driveStallCheck = millis();
+			driveStallRef      = ref;
+		}
+	}
+	else {
+		ts_driveStallCheck = 0;
+		_DRIVE_STALL_BOOST = false;
+	}
+
+	if (_SLOW_SPEED && !_DRIVE_STALL_BOOST)
 		driveSpeed = 25;
 
 	// Read sensor once; use nominal angle for ToF suppression check, biased angle for PID error
@@ -373,11 +398,13 @@ ErrorCodes Driving::ControlDrive(int8_t driveSpeed, float angle) {
 	Serial.print("\tLR:"); Serial.print(leftRightError); Serial.print("\tFLR:"); Serial.print(filteredLR, 1);
 	Serial.print("\tE:"); Serial.print(error, 2);
 	Serial.print("\tC:"); Serial.print(correctionSpeed, 2);
+	Serial.print("\tB:"); Serial.print(_DRIVE_STALL_BOOST);
 	Serial.print("\tdt:"); Serial.print(dt * 1000.0f, 1);
 	Serial.print("\tR:"); Serial.println(rawDt * 1000.0f, 1);
 	#endif
 
-	if (_CAM_VICTIM) maxDriveTime = 12000;
+	if      (_CAM_VICTIM) maxDriveTime = 12000;
+	else if (_SLOW_SPEED) maxDriveTime = SLOW_MAX_DRIVE_TIME;	// a slow tile needs more time — avoid a spurious TIMEOUT recovery
 	if ((!_ON_RAMP) && (millis() - ts_driveStartTime > maxDriveTime)) return ErrorCodes::TIMEOUT;
 	else if (!_ON_RAMP) return ErrorCodes::CHECK_DRIVE;
 	else return ErrorCodes::OK;
