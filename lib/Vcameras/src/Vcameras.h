@@ -141,6 +141,7 @@ public:
      * @return true...ALERT, false...not ALERT
      */
     bool IsAlert(){
+        ReadAlertPin();
         if(_rampSuppressed) return false;	// No cam alert while on/detecting a ramp — must not bias driving (slow-speed)
         return _Alert;
     }
