@@ -151,6 +151,26 @@ ErrorCodes Driving::Turn180Degree(void) {
 	return ErrorCodes::OK;
 }
 
+// Blocking turn to an absolute heading; does not wall-align or mutate the map (unlike EndTurn)
+ErrorCodes Driving::TurnToAngleBlocking(float angle) {
+	// Normalize target into [0, 360) so StartTurn's ≤ 360° guard always passes
+	while (angle >= 360.0f) angle -= 360.0f;
+	while (angle <    0.0f) angle += 360.0f;
+
+	StartTurn(angle);
+	while (ControlTurn(angle) == ErrorCodes::OK) delay(1);
+
+	// Restore the state StartTurn disabled, without wall-aligning or updating the map
+	p_tof->EnableUpdate();
+	EnableBumpers();
+	p_colorSensing->Freeze(false);
+	_CAM_ALERT_TURN = false;
+	maxTurnTime     = DEFAULT_MAX_TURN_TIME;
+	_TURNING        = false;
+
+	return ErrorCodes::OK;
+}
+
 int8_t Driving::SelectAlignSide(void){
 	// Picks the closer side wall, sets distanceFront/distanceBack and coeffSide as side effects.
 	// Returns 1 for left, -1 for right, 0 if no usable wall found on either side.

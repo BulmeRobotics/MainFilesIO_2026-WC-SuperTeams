@@ -79,6 +79,20 @@ class Driving {
         ErrorCodes Turn180Degree(void);
 
         /**
+         * @brief  Blocking turn to an absolute heading, driven by the turn PID.
+         * @details Generalizes Turn180Degree for an arbitrary target: normalizes
+         *          the angle into [0, 360), then loops ControlTurn until the target
+         *          is reached or the turn times out. Restores the module state that
+         *          StartTurn disabled (bumpers, ToF updates, color freeze) but does
+         *          NOT wall-align or update the map orientation, so it is safe for
+         *          standalone maneuvers (e.g. the Technical Challenge) where no maze
+         *          map exists.
+         * @param  angle  Target absolute heading in degrees; normalized to [0, 360).
+         * @return OK after completion.
+         */
+        ErrorCodes TurnToAngleBlocking(float angle);
+
+        /**
          * @brief  Aligns the robot parallel to the nearest side wall using the ToF sensors.
          * @return OK if alignment succeeded.
          *         NOT_ALIGNING if no usable wall was found on either side, or if a side sensor goes out of range during alignment.
