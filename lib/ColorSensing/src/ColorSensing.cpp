@@ -54,6 +54,27 @@ ErrorCodes EEPROM::WriteToEEPROM(PoI_Type type, char sensor, uint16_t* buffer){
 	return ErrorCodes::OK;
 }
 
+ErrorCodes EEPROM::WriteUiSettings(ErrorCodes layer, ErrorCodes ramp, bool showInvalid){
+	// Settings are stored as small codes instead of raw enum values, so reordering ErrorCodes cannot corrupt them
+	uint8_t buffer[3];
+	buffer[0] = (layer == ErrorCodes::multi) ? 1 : 0;
+	buffer[1] = (ramp == ErrorCodes::single) ? 0 : ((ramp == ErrorCodes::disabled) ? 2 : 1);
+	buffer[2] = showInvalid ? 1 : 0;
+	i2ceeprom.write(EEPROM_UI_SETTINGS, buffer, 3);
+	return ErrorCodes::OK;
+}
+
+ErrorCodes EEPROM::ReadUiSettings(ErrorCodes& layer, ErrorCodes& ramp, bool& showInvalid){
+	uint8_t buffer[3];
+	i2ceeprom.read(EEPROM_UI_SETTINGS, buffer, 3);
+	layer = (buffer[0] == 1) ? ErrorCodes::multi : ErrorCodes::single;	// unwritten (0xFF) -> default single
+	if(buffer[1] == 0)		ramp = ErrorCodes::single;
+	else if(buffer[1] == 2)	ramp = ErrorCodes::disabled;
+	else					ramp = ErrorCodes::multi;					// unwritten (0xFF) -> default dynamic
+	showInvalid = (buffer[2] == 1);										// unwritten (0xFF) -> default hide
+	return ErrorCodes::OK;
+}
+
 // COLOR SENSING: --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 uint8_t ColorSensing::Init(TwoWire* wire, UserInterface* ui, EEPROM* eeprom){
     _eeprom = eeprom;

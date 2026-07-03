@@ -775,14 +775,21 @@ void UserInterface::Initialize(){
     driveMode = ErrorCodes::straight;
 }
 
-void UserInterface::ConnectPointer(RobotState* state, ColorSensing* cs, Mapping* mapping, Vcameras* camera, Ejector* ejector){
+void UserInterface::ConnectPointer(RobotState* state, ColorSensing* cs, Mapping* mapping, Vcameras* camera, Ejector* ejector, EEPROM* eeprom){
     p_state = state;
     p_colorSens = cs;
     p_mapping = mapping;
     p_camera = camera;
     p_ejector = ejector;
+    p_eeprom = eeprom;
     if (p_mapping) p_mapping->SetPriority(driveMode);
     return;
+}
+
+// Persists the current layer / ramp / invalid victim settings to EEPROM
+void UserInterface::SaveSettings(){
+    if(p_eeprom == nullptr || p_mapping == nullptr || p_camera == nullptr) return;
+    p_eeprom->WriteUiSettings(p_mapping->GetSetting(ErrorCodes::layer), p_mapping->GetSetting(ErrorCodes::ramp), p_camera->GetShowInvalid());
 }
 
 #ifdef _MSC_VER
@@ -1042,13 +1049,15 @@ void UserInterface::Update(){
                     ErrorCodes newLayer = ErrorCodes::single;
                     if(p_mapping->GetSetting(ErrorCodes::layer) == ErrorCodes::single) newLayer = ErrorCodes::multi;
                     p_mapping->SetSettings(newLayer, p_mapping->GetSetting(ErrorCodes::ramp));
-                    btnLayerSetting.Draw(display,(p_mapping->GetSetting(ErrorCodes::layer) == ErrorCodes::single) ? "single" : "multi");
+                    SaveSettings();
+                btnLayerSetting.Draw(display,(p_mapping->GetSetting(ErrorCodes::layer) == ErrorCodes::single) ? "single" : "multi");
                 }
 
                 if(btnVictimSetting.IsPressed(tx,ty)){
                     Signal(ErrorCodes::BUZZER, 5,0,1);
                     p_camera->SetShowInvalid(!p_camera->GetShowInvalid());
-                    btnVictimSetting.Draw   (display, (p_camera->GetShowInvalid() ? "Show" : "Hide"));
+                    SaveSettings();
+                btnVictimSetting.Draw   (display, (p_camera->GetShowInvalid() ? "Show" : "Hide"));
                 }
 
                 if(btnRampSetting.IsPressed(tx,ty)){
@@ -1061,7 +1070,8 @@ void UserInterface::Update(){
                         default:                 newRamp = ErrorCodes::single;   break;	// off     -> short
                     }
                     p_mapping->SetSettings(p_mapping->GetSetting(ErrorCodes::layer), newRamp);
-                    btnRampSetting.Draw(display, RampSettingLabel(p_mapping->GetSetting(ErrorCodes::ramp)));
+                    SaveSettings();
+                btnRampSetting.Draw(display, RampSettingLabel(p_mapping->GetSetting(ErrorCodes::ramp)));
                 }
             }
 

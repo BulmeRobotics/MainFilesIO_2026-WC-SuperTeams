@@ -117,7 +117,18 @@ int main(void) {
 
   Wire1.setClock(I2C_CLOCK);
 
-  UI.ConnectPointer(&currentMenuState, &cs, &mapper, &cam, &ejector);
+  //----EEPROM---- (before ConnectPointer, so the persisted settings are applied before the UI can draw them)
+  if (eeprom.Init() != ErrorCodes::OK) UI.AddInfoMsg("EEPROM", "ERROR", false);
+  else {
+    UI.AddInfoMsg("EEPROM", "OK", true);
+    ErrorCodes savedLayer, savedRamp;
+    bool savedShowInvalid;
+    eeprom.ReadUiSettings(savedLayer, savedRamp, savedShowInvalid);
+    mapper.SetSettings(savedLayer, savedRamp);
+    cam.SetShowInvalid(savedShowInvalid);
+  }
+
+  UI.ConnectPointer(&currentMenuState, &cs, &mapper, &cam, &ejector, &eeprom);
     //Buttons
   pinMode(BUTTON_BLACK, INPUT);
   pinMode(BUTTON_GRAY, INPUT);
@@ -126,9 +137,7 @@ int main(void) {
   lastButtonPressGray = millis();
   UI.AddInfoMsg("Buttons", "OK", true);
 
-  //----EEPROM----
-  (eeprom.Init() != ErrorCodes::OK) ? UI.AddInfoMsg("EEPROM", "ERROR", false) : UI.AddInfoMsg("EEPROM", "OK", true); 
-  
+
   //----Color sensor----
   if(cs.Init(&Wire,&UI,&eeprom)!=0) UI.AddInfoMsg("Color Sensor", "ERROR", false);
   else UI.AddInfoMsg("Color Sensor", "OK", true);

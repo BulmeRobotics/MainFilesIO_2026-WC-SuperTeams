@@ -51,7 +51,9 @@ class EEPROM {
 
     #define EEPROM_MAIN_SPEED 0x14A
 
-    #define EEPROM_NEXT_AVALIBLE_ADDR 0x14C
+    #define EEPROM_UI_SETTINGS 0x14C	// 3 bytes: layer, ramp, showInvalid
+
+    #define EEPROM_NEXT_AVALIBLE_ADDR 0x14F
 
     Adafruit_EEPROM_I2C i2ceeprom;
 
@@ -64,6 +66,22 @@ class EEPROM {
         ErrorCodes Init();
         ErrorCodes WriteToEEPROM(PoI_Type type, char sensor, uint16_t* buffer);
         ErrorCodes ReadFromEEPROM(PoI_Type type, char sensor, uint16_t* buffer);
+
+        /**
+         * @brief persists the UI settings (layer / ramp / invalid victims)
+         * @param layer single / multi
+         * @param ramp single (short) / multi (dynamic) / disabled (off)
+         * @param showInvalid true...show invalid victims; false...hide
+         */
+        ErrorCodes WriteUiSettings(ErrorCodes layer, ErrorCodes ramp, bool showInvalid);
+
+        /**
+         * @brief reads the persisted UI settings; unwritten EEPROM falls back to the defaults
+         * @param layer out: single / multi
+         * @param ramp out: single (short) / multi (dynamic) / disabled (off)
+         * @param showInvalid out: true...show invalid victims; false...hide
+         */
+        ErrorCodes ReadUiSettings(ErrorCodes& layer, ErrorCodes& ramp, bool& showInvalid);
 };
 
 #ifdef _MSC_VER

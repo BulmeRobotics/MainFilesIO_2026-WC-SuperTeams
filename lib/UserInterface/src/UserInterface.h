@@ -20,6 +20,7 @@
 
 class ColorSensing;
 class Vcameras;
+class EEPROM;
 
 #ifdef _MSC_VER
     #pragma endregion Includes
@@ -137,6 +138,10 @@ private:
     Mapping* p_mapping = nullptr;
     Vcameras* p_camera = nullptr;
     Ejector* p_ejector = nullptr;
+    EEPROM* p_eeprom = nullptr;
+
+    // Persists the current layer / ramp / invalid victim settings to EEPROM
+    void SaveSettings();
 
     // --- States ---
     ErrorCodes driveMode = ErrorCodes::straight;
@@ -233,7 +238,7 @@ public:
     /**
      * @brief Connects the other classes to the User Interface
      */
-    void ConnectPointer(RobotState* state, ColorSensing* cs, Mapping* mapping, Vcameras* camera, Ejector* ejector);
+    void ConnectPointer(RobotState* state, ColorSensing* cs, Mapping* mapping, Vcameras* camera, Ejector* ejector, EEPROM* eeprom);
 
     /**
      * @brief Adds an Information to the Message Log in startup or BLE screen
