@@ -270,7 +270,7 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering, bool all
         delay(50);
     }
 
-    uint8_t blinkCount = (victim >= '0' && victim <= '4') ? (uint8_t)(victim - '0') + 1 : 1;
+    uint8_t blinkCount = (victim >= '1' && victim <= '5') ? (uint8_t)(victim - '0') : 1;
     _ui->Signal(ErrorCodes::LED, 500, 500, blinkCount);
 
     //Signal Victim
