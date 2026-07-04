@@ -311,22 +311,22 @@ while (true) {
       // time, delivery only scores at the order's own target). Vcameras also suppresses
       // pickups outside EXPLORE via the allowPickup flag.
       if (currentMissionState == MissionState::EXPLORE) {
-          uint8_t currentVictims = 0;
-          for (int i = 0; i < 256; i++) {
-              if (mapper.GetTiles()[i].victim) currentVictims++;
-          }
-          if (currentVictims > victimCount) {
-              victimCount = currentVictims;
+      uint8_t currentVictims = 0;
+      for (int i = 0; i < 256; i++) {
+          if (mapper.GetTiles()[i].victim) currentVictims++;
+      }
+      if (currentVictims > victimCount) {
+          victimCount = currentVictims;
               currentVictimTile = mapper.GetLastVictimIndex();	// tile recorded at detection time, not current position
-              currentMissionState = MissionState::RETURN_HANDOVER;
+          currentMissionState = MissionState::RETURN_HANDOVER;
           }
       }
 
       uint16_t hz = mapper.GetHandoverZoneIndex();
-
+      
       if (currentMissionState == MissionState::EXPLORE) {
           mapper.ClearMissionTarget();
-      }
+      } 
       else if (currentMissionState == MissionState::RETURN_HANDOVER) {
           if (hz != UINT16_MAX) {
               mapper.SetMissionTarget(hz);
@@ -338,7 +338,7 @@ while (true) {
               bleHandshakeStart = millis();
               robot.EndDrive();
           }
-      }
+      } 
       else if (currentMissionState == MissionState::HANDOVER_BLE_SYNC) {
           robot.EndDrive();
 
@@ -388,7 +388,7 @@ while (true) {
                   currentMissionState = MissionState::DELIVER;
               }
           }
-
+          
           if (currentMissionState == MissionState::HANDOVER_BLE_SYNC) {
               continue; // Stay in this state, don't get map instructions yet
           }
