@@ -225,27 +225,20 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
     str = Recieve();
     if(str[0] == ' ') return ErrorCodes::OK;    //Is data valid?
 
-    ResetCam();
-
     //Determine victim side
     if(str[0] == 'L') side = ErrorCodes::left;
     else if(str[0] == 'R') side = ErrorCodes::right;
     else return ErrorCodes::invalid;
     
+    //Send stop command
+    _drivetrain->Stop();    //Stop robot
+
+    str = Recieve(5000);
 
     //Determine Victim Type
     char victim = str[1];
 
-    //Show Invalid Victim as U
-    if(_ShowInvalid && victim == 'F'){
-        victim = 'U';
-    }
 
-    //Check if Victim is allowed:
-    if(!(victim == 'H' || victim == 'S' || victim == 'U')){
-        _ui->ShowPopup("Invalid victim!", ErrorCodes::warning, 2);
-        return ErrorCodes::ERROR;
-    }
 
     //Mapping call
     ErrorCodes err = _mapper->SetVictim();
@@ -257,19 +250,6 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
     //Stops robot
     _drivetrain->Stop();
 
-    //Get Amount of dropped Rescue Packs
-    uint8_t amount;
-    switch (victim) {
-    case 'H':   //Harmed
-        amount = 2;
-        break;
-    case 'S':   //Stable
-        amount = 1;
-        break;
-    default:    //Unharmed / alles andere
-        amount = 0;
-        break;
-    }
     ReadAlertPin();
     //Signal Victim
     char buffer[29];
@@ -278,10 +258,10 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
 
     _ui->Signal(ErrorCodes::BUZZER_LED, 500, 500 ,1);
     _ui->Update();
-    _ui->Signal(ErrorCodes::LED, 500, 500 ,4);
-
-    //Eject
-    _ejector->Eject(side, amount);
+    for (int i = 0; i < str[1]; i++)
+    {
+        _ui->Signal(ErrorCodes::LED, 500, 500, 1);
+    }
     _ui->Update();
     
     _ui->Update();
@@ -290,6 +270,8 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
     //2RP - Harmed
     //1RP - Stable
     //0RP - Unharmed
+
+    //TAKE ORDER STUFF
 
     _timeFound = millis();  //reset reset time to compensate for waiting
     ReadAlertPin();

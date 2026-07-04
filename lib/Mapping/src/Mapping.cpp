@@ -446,6 +446,10 @@ ErrorCodes Mapping::SetTile(uint8_t walls, TileType floor) {
     // previous tile, so any checkpoint staged there is genuine — commit it now.
     CommitPendingCheckpoint();
 
+    if (floor == TileType::blue) {
+        handoverZoneIndex = currentPosition;
+    }
+
     if(_PANIC_MODE_ACTIVE){
         _currentPanicWalls = absWalls;
         UpdateRelocalization(absWalls);
@@ -611,7 +615,11 @@ Instructionset Mapping::GetInstruction() {
 
         _BumperTriggered = false;
 
-        targetPosition = findNextTarget();
+        if (missionTargetIndex != UINT16_MAX) {
+            targetPosition = missionTargetIndex;
+        } else {
+            targetPosition = findNextTarget();
+        }
 
         //Check for Overflow
         if (targetPosition >= UINT16_MAX)

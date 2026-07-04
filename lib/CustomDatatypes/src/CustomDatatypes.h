@@ -139,3 +139,10 @@ struct rawColor {
 		Clear	= 0,
         NIR     = 0;
 };
+
+
+struct ORDER {
+    bool fulfilled = false;
+    uint8_t type = 0;
+    
+};

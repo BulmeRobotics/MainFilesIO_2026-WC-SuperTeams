@@ -145,6 +145,10 @@ private:    // --- PRIVATE ---
     bool     _checkpointPending        = false;
     uint16_t pendingCheckpointPosition = 0;
 
+    // -- SuperTeams --
+    uint16_t handoverZoneIndex = UINT16_MAX;
+    uint16_t missionTargetIndex = UINT16_MAX;
+
     // -- Config --
     ErrorCodes pathPriority = ErrorCodes::straight;
     bool _RETURN_HOME = false;
@@ -174,6 +178,10 @@ public: // --- PUBLIC ---
      * @return returns the next Instruction
      */
     Instructionset GetInstruction();
+
+    void SetMissionTarget(uint16_t tileIndex) { missionTargetIndex = tileIndex; }
+    void ClearMissionTarget() { missionTargetIndex = UINT16_MAX; }
+    uint16_t GetHandoverZoneIndex() { return handoverZoneIndex; }
 
     /**
      * @brief Informs Mapping of current Tile

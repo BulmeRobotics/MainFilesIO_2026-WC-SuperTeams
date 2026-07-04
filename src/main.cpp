@@ -83,6 +83,15 @@ uint32_t lastButtonPressGray;
 uint32_t ts_lastCycle;
 uint32_t ts_camAlertStart;
 
+// -- SuperTeams --
+enum class MissionState { EXPLORE, RETURN_HANDOVER, HANDOVER_BLE_SYNC, DELIVER, DONE };
+MissionState currentMissionState = MissionState::EXPLORE;
+uint16_t currentVictimTile = UINT16_MAX;
+uint8_t victimCount = 0;
+uint32_t bleWaitStart = 0;
+uint8_t bleSyncStep = 0;
+String bleBuffer = "";
+
 //----Flags----
 bool _ROBOT_TURNING = false;
 ErrorCodes _CHECKPOINT = ErrorCodes::OK;
@@ -286,6 +295,90 @@ while (true) {
 
     else if (currentRunState == RunState::GET_INSTRUCTIONS) {
       UI.UpdateMap();
+
+      // --- SUPERTEAMS MISSION LOGIC ---
+      // Check if a new victim was found
+      uint8_t currentVictims = 0;
+      for (int i = 0; i < 256; i++) {
+          if (mapper.GetTiles()[i].victim) currentVictims++;
+      }
+      if (currentVictims > victimCount) {
+          victimCount = currentVictims;
+          currentVictimTile = mapper.GetCurrentPosition();
+          currentMissionState = MissionState::RETURN_HANDOVER;
+      }
+
+      uint16_t hz = mapper.GetHandoverZoneIndex();
+      
+      if (currentMissionState == MissionState::EXPLORE) {
+          mapper.ClearMissionTarget();
+      } 
+      else if (currentMissionState == MissionState::RETURN_HANDOVER) {
+          if (hz != UINT16_MAX) {
+              mapper.SetMissionTarget(hz);
+          }
+          if (mapper.GetCurrentPosition() == hz && hz != UINT16_MAX) {
+              currentMissionState = MissionState::HANDOVER_BLE_SYNC;
+              bleSyncStep = 0;
+              bleBuffer = "";
+              robot.EndDrive();
+          }
+      } 
+      else if (currentMissionState == MissionState::HANDOVER_BLE_SYNC) {
+          robot.EndDrive();
+          // Non-blocking BLE pseudo-handover sequence
+          if (bleSyncStep == 0) {
+              ble.print("<HS>");
+              bleWaitStart = millis();
+              bleSyncStep = 1;
+          } else if (bleSyncStep == 1) {
+              while (ble.available()) {
+                  char c = ble.read();
+                  bleBuffer += c;
+              }
+              if (bleBuffer.indexOf("<HR>") != -1) {
+                  bleBuffer = "";
+                  ble.print("<O" + String(victimCount) + ">");
+                  bleWaitStart = millis();
+                  bleSyncStep = 2;
+              } else if (millis() - bleWaitStart > 5000) {
+                  // Timeout, retry
+                  bleSyncStep = 0;
+              }
+          } else if (bleSyncStep == 2) {
+              while (ble.available()) {
+                  char c = ble.read();
+                  bleBuffer += c;
+              }
+              if (bleBuffer.indexOf("<DR>") != -1) {
+                  bleBuffer = "";
+                  currentMissionState = MissionState::DELIVER;
+              } else if (millis() - bleWaitStart > 5000) {
+                  // Timeout, retry
+                  bleSyncStep = 0;
+              }
+          }
+          
+          if (currentMissionState == MissionState::HANDOVER_BLE_SYNC) {
+              continue; // Stay in this state, don't get map instructions yet
+          }
+      }
+      else if (currentMissionState == MissionState::DELIVER) {
+          if (currentVictimTile != UINT16_MAX) {
+              mapper.SetMissionTarget(currentVictimTile);
+          }
+          if (mapper.GetCurrentPosition() == currentVictimTile) {
+              // Delivered!
+              UI.Signal(ErrorCodes::BUZZER, 500, 100, 3);
+              if (victimCount >= 3) {
+                  currentMissionState = MissionState::DONE;
+                  mapper.ClearMissionTarget(); // Will cause it to go to start and finish if _RETURN_HOME
+              } else {
+                  currentMissionState = MissionState::EXPLORE;
+              }
+          }
+      }
+
       //Get Instructions Logic
       switch (mapper.GetInstruction()) 
       {
