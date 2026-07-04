@@ -100,7 +100,7 @@ uint16_t Mapping::findNextTarget() {
     else if (pathPriority == ErrorCodes::south) bufferPriority = Orientations::South;
     else if (pathPriority == ErrorCodes::west) bufferPriority = Orientations::West;
 
-    bufferPriority = currentOrientation;
+    bufferPriority = Orientations::South;
     
 	int16_t n = tiles[currentPosition].north,
             e = tiles[currentPosition].east,
@@ -845,10 +845,60 @@ void Mapping::Reset(void) {
 		tiles[i] = Tile();   //Reset all tile data to default (inactive)
     }
 
-    //set first tile as start
-    tiles[0].type = TileType::unexplored;
+    // --- PRE-MAPPING SUPERTEAMS RESTAURANT AREA ---
+    // Index 0: Start Tile (Silver Checkpoint) at (0,0)
+    tiles[0].x = 0; tiles[0].y = 0; tiles[0].z = 0;
+    tiles[0].type = TileType::checkpoint;
+    tiles[0].weight = COST_REGULAR;
+    tiles[0].east = 1;
+    tiles[0].south = 8;
+
+    // Hallway Tiles X = 1 to 6
+    for (uint16_t x = 1; x <= 6; x++) {
+        tiles[x].x = x; tiles[x].y = 0; tiles[x].z = 0;
+        tiles[x].type = TileType::visited;
+        tiles[x].weight = COST_REGULAR;
+        tiles[x].west = x - 1;
+        tiles[x].east = x + 1;
+    }
+
+    // Index 7: Exit Tile (Red) at (7,0)
+    tiles[7].x = 7; tiles[7].y = 0; tiles[7].z = 0;
+    tiles[7].type = TileType::dangerZone;
+    tiles[7].weight = COST_DANGER_ZONE;
+    tiles[7].west = 6;
+    tiles[7].south = 10;
+
+    // Index 8: Left Corridor (0,-1)
+    tiles[8].x = 0; tiles[8].y = -1; tiles[8].z = 0;
+    tiles[8].type = TileType::visited;
+    tiles[8].weight = COST_REGULAR;
+    tiles[8].north = 0;
+    tiles[8].south = 9;
+
+    // Index 9: Left Blue Handoff (0,-2)
+    tiles[9].x = 0; tiles[9].y = -2; tiles[9].z = 0;
+    tiles[9].type = TileType::blue;
+    tiles[9].weight = COST_BLUE;
+    tiles[9].north = 8;
+
+    // Index 10: Right Corridor (7,-1)
+    tiles[10].x = 7; tiles[10].y = -1; tiles[10].z = 0;
+    tiles[10].type = TileType::visited;
+    tiles[10].weight = COST_REGULAR;
+    tiles[10].north = 7;
+    tiles[10].south = 11;
+
+    // Index 11: Right Blue Handoff (7,-2)
+    tiles[11].x = 7; tiles[11].y = -2; tiles[11].z = 0;
+    tiles[11].type = TileType::blue;
+    tiles[11].weight = COST_BLUE;
+    tiles[11].north = 10;
+
+    // Initialize state
     currentPosition = 0;
     currentOrientation = Orientations::North;
+    handoverZoneIndex = 9; // Default to Left Handoff (0,-2)
 
     resetCounter = 0;
     lastCheckpointPosition = currentPosition;
