@@ -897,9 +897,9 @@ void Mapping::Reset(void) {
     tiles[11].south = 8;
 
     // Initialize state
-    currentPosition = 0;
+    //currentPosition = 0;
     currentOrientation = Orientations::North;
-    handoverZoneIndex = 9; // Default to Left Handoff (0,-2)
+    handoverZoneIndex = 11; // Default to Left Handoff (0,-2)
 
     resetCounter = 0;
     lastCheckpointPosition = currentPosition;

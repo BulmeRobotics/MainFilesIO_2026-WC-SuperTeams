@@ -408,7 +408,7 @@ while (true) {
         //Drive Forward Logic
         //Blue Tile:
         if (cs.GetFloor() == TileType::blue) {
-          ExecTileBehavior(TileAction::STOP_AND_WAIT_5S);
+          ExecTileBehavior(TileAction::IGNORE);
           //Weiterfahren
         }
         currentRunState = RunState::DRIVE;
