@@ -18,6 +18,7 @@
 #define LOWER_LEVEL_HEIGHT -100
 
 #define CAM_ALERT_SLOW_BUDGET 1500	// ms a continuous cam alert may hold slow speed; a stuck alert must not keep the robot crawling
+#define TURN_SPLIT_PAUSE_MS 500		// still-hold window between the two 90° legs of a split 180° turn (camera scan)
 
 // #define PID_TUNE_MODE        // Uncomment to enable drive-forever PID tuning harness
 // #define TURN_TUNE_MODE       // Uncomment to enable alternating-90° turn PID tuning harness
@@ -96,6 +97,11 @@ String bleBuffer = "";
 bool _ROBOT_TURNING = false;
 ErrorCodes _CHECKPOINT = ErrorCodes::OK;
 
+//----Split 180° turn state----
+float    _turnLegTargetAngle = 0.0f;	// absolute angle the current turn leg drives toward
+bool     _turnSplitPending   = false;	// true while a second 90° leg still follows the scan pause
+uint32_t ts_turnPauseStart   = 0;		// millis() when the mid-turn scan pause began
+
 #ifdef _MSC_VER
   #pragma endregion Variables
   #pragma region Prototypes //----------------------------------------------------------------------
@@ -105,6 +111,7 @@ ErrorCodes _CHECKPOINT = ErrorCodes::OK;
 void cyclicMainTask();
 void cyclicRunTask();
 void ExecTileBehavior(TileAction action);
+void StartTurnToOrientation(Orientations target);
 
 void ISR_BTN_BLACK();
 void ISR_BTN_GRAY();
@@ -385,43 +392,19 @@ while (true) {
       switch (mapper.GetInstruction()) 
       {
       case Instructionset::T_North:
-      //Turn North Logic
-        robot.EndDrive();
-				robot.StartAdjustment();
-				currentRunState = RunState::TURN;
-				robot.SetRobotTargetAngle(Orientations::North);
-        robot.StartTurn(gyro.GetAngleFromOrientation(robot.GetRobotTargetAngle()));
-				_ROBOT_TURNING = true;
+        StartTurnToOrientation(Orientations::North);
         break;
 
       case Instructionset::T_East:
-        //Turn East Logic
-				robot.EndDrive();
-				robot.StartAdjustment();
-				currentRunState = RunState::TURN;
-				robot.SetRobotTargetAngle(Orientations::East);
-        robot.StartTurn(gyro.GetAngleFromOrientation(robot.GetRobotTargetAngle()));
-				_ROBOT_TURNING = true;
+        StartTurnToOrientation(Orientations::East);
         break;
 
       case Instructionset::T_South:
-        //Turn South Logic
-				robot.EndDrive();
-				robot.StartAdjustment();
-				currentRunState = RunState::TURN;
-				robot.SetRobotTargetAngle(Orientations::South);
-        robot.StartTurn(gyro.GetAngleFromOrientation(robot.GetRobotTargetAngle()));
-				_ROBOT_TURNING = true;
+        StartTurnToOrientation(Orientations::South);
         break;
 
       case Instructionset::T_West:
-        //Turn West Logic
-				robot.EndDrive();
-				robot.StartAdjustment();
-				currentRunState = RunState::TURN;
-				robot.SetRobotTargetAngle(Orientations::West);
-        robot.StartTurn(gyro.GetAngleFromOrientation(robot.GetRobotTargetAngle()));
-				_ROBOT_TURNING = true;
+        StartTurnToOrientation(Orientations::West);
         break;
 
       case Instructionset::D_Forward:
@@ -486,11 +469,31 @@ while (true) {
     } 
     
     else if (currentRunState == RunState::TURN) {
-      //Turn Logic
-      if (robot.ControlTurn(gyro.GetAngleFromOrientation(robot.GetRobotTargetAngle())) == ErrorCodes::TURNED) {
-        robot.EndTurn();
-        _ROBOT_TURNING = false;
-				currentRunState = RunState::SETTILE;
+      //Turn Logic — drives the current leg's target (may be an intermediate 90° heading of a split 180°)
+      if (robot.ControlTurn(_turnLegTargetAngle) == ErrorCodes::TURNED) {
+        if (_turnSplitPending) {
+          // First 90° leg done. Begin the still scan pause. Do NOT EndTurn: keep the mid-turn
+          // sensor state (bumpers off, color frozen, ToF off) so the robot stays put while the
+          // cameras scan; motors are already stopped by ControlTurn's completion branch.
+          _turnSplitPending = false;
+          ts_turnPauseStart = millis();
+          currentRunState = RunState::TURN_PAUSE;
+        }
+        else {
+          robot.EndTurn();
+          _ROBOT_TURNING = false;
+          currentRunState = RunState::SETTILE;
+        }
+      }
+    }
+
+    else if (currentRunState == RunState::TURN_PAUSE) {
+      // Hold still TURN_SPLIT_PAUSE_MS so the cameras (cyclicRunTask) can scan the wall the robot
+      // now faces, then launch the second 90° leg to the final heading.
+      if (millis() - ts_turnPauseStart >= TURN_SPLIT_PAUSE_MS) {
+        _turnLegTargetAngle = gyro.GetAngleFromOrientation(robot.GetRobotTargetAngle());
+        robot.StartTurn(_turnLegTargetAngle, true);	// force 180° speed cap on the second leg too
+        currentRunState = RunState::TURN;
       }
     }
     
@@ -714,6 +717,33 @@ void ISR_BTN_GRAY() {
 		UI.CycleDriveMode();
 		lastButtonPressGray = millis();
 	}
+}
+
+// Starts a turn toward the given cardinal orientation. A 180° turn (target opposite the current
+// heading) is split into two 90° legs with a scan pause in between: this fires the first leg to an
+// intermediate +90° heading and arms _turnSplitPending so the TURN state inserts TURN_PAUSE before
+// the second leg. robotTargetAngle always holds the FINAL orientation (ControlDrive reads it after).
+void StartTurnToOrientation(Orientations target){
+  robot.EndDrive();
+  robot.StartAdjustment();
+  robot.SetRobotTargetAngle(target);	// final heading — kept intact through both legs
+
+  Orientations current = gyro.GetOrientationFromAngle();
+  bool is180 = ((int)target - (int)current + 4) % 4 == 2;
+
+  if(is180){
+    _turnSplitPending = true;
+    Orientations intermediate = (Orientations)(((int)current + 1) % 4);	// +90° clockwise
+    _turnLegTargetAngle = gyro.GetAngleFromOrientation(intermediate);
+  }
+  else {
+    _turnSplitPending = false;
+    _turnLegTargetAngle = gyro.GetAngleFromOrientation(target);
+  }
+
+  robot.StartTurn(_turnLegTargetAngle, is180);	// force the 180° speed cap on both split legs
+  currentRunState = RunState::TURN;
+  _ROBOT_TURNING = true;
 }
 
 void ExecTileBehavior(TileAction action){

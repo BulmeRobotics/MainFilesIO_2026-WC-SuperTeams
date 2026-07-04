@@ -26,7 +26,7 @@
 #pragma region TURN
 #endif
 
-ErrorCodes Driving::StartTurn(float angle) {
+ErrorCodes Driving::StartTurn(float angle, bool force180Speed) {
 	registeredBumps = 0;
 
 	if (angle > 360)
@@ -47,8 +47,8 @@ ErrorCodes Driving::StartTurn(float angle) {
 	p_colorSensing->Freeze(true);
 
 	p_gyro->GetAngleAdvanced(angle, GyroAxles::Axis_X);	// Read gyro to determine turn direction
-	if (abs(p_gyro->data.angle_error) > 150) _TURN_180_DEGREE = true;
-	else _TURN_180_DEGREE = false;	// Flag for 180° turn speed limiting
+	if (force180Speed || abs(p_gyro->data.angle_error) > 150) _TURN_180_DEGREE = true;
+	else _TURN_180_DEGREE = false;	// Flag for 180° turn speed limiting (force180Speed: keep split 90° legs slow for cameras)
 
 	integralTurnError = 0.0f;
 	turnLastError     = 0.0f;

@@ -52,11 +52,14 @@ class Driving {
         #endif
         /**
          * @brief  Initializes a turn to a target heading.
-         * @param  angle  Target absolute angle in degrees.
+         * @param  angle          Target absolute angle in degrees.
+         * @param  force180Speed  Force the 180° speed cap (camera frame-rate limit) even for a
+         *                        sub-150° turn. Used by split 180° turns so each 90° leg stays slow
+         *                        enough for the cameras to scan during rotation.
          * @return OK if angle is valid (≤ 360°).
          *         ERROR if angle exceeds 360°.
          */
-        ErrorCodes StartTurn(float angle);
+        ErrorCodes StartTurn(float angle, bool force180Speed = false);
 
         /**
          * @brief  Controls the ongoing turn each cycle. Call until TURNED is returned.
