@@ -179,8 +179,14 @@ public: // --- PUBLIC ---
      */
     Instructionset GetInstruction();
 
-    void SetMissionTarget(uint16_t tileIndex) { missionTargetIndex = tileIndex; }
-    void ClearMissionTarget() { missionTargetIndex = UINT16_MAX; }
+    void SetMissionTarget(uint16_t tileIndex) { 
+        missionTargetIndex = tileIndex; 
+        if(_debugPort) _debugPort->println("MissionTarget Set: " + String(tileIndex));
+    }
+    void ClearMissionTarget() { 
+        missionTargetIndex = UINT16_MAX; 
+        if(_debugPort) _debugPort->println("MissionTarget Cleared");
+    }
     uint16_t GetHandoverZoneIndex() { return handoverZoneIndex; }
 
     /**

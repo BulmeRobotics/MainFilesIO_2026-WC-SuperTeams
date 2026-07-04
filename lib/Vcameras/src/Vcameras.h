@@ -69,6 +69,7 @@ private:
 
     // -- SETTING ---
     bool _ShowInvalid = false;
+    bool _hasDelivered = false;
 
     ErrorCodes EnableNonBlockingStep();
     bool TryReceivePacketNonBlocking();
@@ -118,10 +119,18 @@ public:
      * @brief camera handler has to be called periodically
      * @param onRed is robot on Red Tile?
      * @param onRamp is robot on a confirmed ramp? (disables cams + suppresses victim acting)
-     * @param rampDetecting is a ramp currently being detected? (suppresses victim acting without disabling cams)
+     * @param isDelivering if true, triggers rescue kit ejection instead of victim taking
      * @return ErrorCodes for debugging
      */
-    ErrorCodes Update(bool onRed, bool onRamp = false);
+    ErrorCodes Update(bool onRed, bool onRamp = false, bool isDelivering = false);
+
+    bool HasDelivered() {
+        if (_hasDelivered) {
+            _hasDelivered = false;
+            return true;
+        }
+        return false;
+    }
 
     /**
      * @brief Getter if Cam is enabled

@@ -617,6 +617,7 @@ Instructionset Mapping::GetInstruction() {
 
         if (missionTargetIndex != UINT16_MAX) {
             targetPosition = missionTargetIndex;
+            if(_debugPort) _debugPort->println("MissionTarget Active: " + String(targetPosition));
         } else {
             targetPosition = findNextTarget();
         }

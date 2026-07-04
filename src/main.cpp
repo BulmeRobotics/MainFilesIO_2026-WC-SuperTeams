@@ -84,7 +84,7 @@ uint32_t ts_lastCycle;
 uint32_t ts_camAlertStart;
 
 // -- SuperTeams --
-enum class MissionState { EXPLORE, RETURN_HANDOVER, HANDOVER_BLE_SYNC, DELIVER, DONE };
+enum class MissionState { EXPLORE, RETURN_HANDOVER, HANDOVER_BLE_SYNC, DELIVER, DELIVER_SEARCH, DONE };
 MissionState currentMissionState = MissionState::EXPLORE;
 uint16_t currentVictimTile = UINT16_MAX;
 uint8_t victimCount = 0;
@@ -339,7 +339,6 @@ while (true) {
               if (bleBuffer.indexOf("<HR>") != -1) {
                   bleBuffer = "";
                   ble.print("<O" + String(victimCount) + ">");
-                  bleWaitStart = millis();
                   bleSyncStep = 2;
               } else if (millis() - bleWaitStart > 5000) {
                   // Timeout, retry
@@ -352,10 +351,15 @@ while (true) {
               }
               if (bleBuffer.indexOf("<DR>") != -1) {
                   bleBuffer = "";
-                  currentMissionState = MissionState::DELIVER;
-              } else if (millis() - bleWaitStart > 5000) {
+                  bleSyncStep = 3;
+              } else if (millis() - bleWaitStart > 10000) {
                   // Timeout, retry
                   bleSyncStep = 0;
+              }
+          } else if (bleSyncStep == 3) {
+              // Ensure we stay for 5 seconds on the handoff tile
+              if (millis() - bleWaitStart >= 5000) {
+                  currentMissionState = MissionState::DELIVER;
               }
           }
           
@@ -368,15 +372,13 @@ while (true) {
               mapper.SetMissionTarget(currentVictimTile);
           }
           if (mapper.GetCurrentPosition() == currentVictimTile) {
-              // Delivered!
-              UI.Signal(ErrorCodes::BUZZER, 500, 100, 3);
-              if (victimCount >= 3) {
-                  currentMissionState = MissionState::DONE;
-                  mapper.ClearMissionTarget(); // Will cause it to go to start and finish if _RETURN_HOME
-              } else {
-                  currentMissionState = MissionState::EXPLORE;
-              }
+              // We reached the tile! Switch to DELIVER_SEARCH so it drives around and camera can find it.
+              currentMissionState = MissionState::DELIVER_SEARCH;
+              mapper.ClearMissionTarget();
           }
+      }
+      else if (currentMissionState == MissionState::DELIVER_SEARCH) {
+          // Normal exploration in this state until camera triggers delivery
       }
 
       //Get Instructions Logic
@@ -640,16 +642,26 @@ void cyclicMainTask() {
   #endif
 }
 void cyclicRunTask() {
+  bool isDelivering = (currentMissionState == MissionState::DELIVER_SEARCH);
   #ifdef DEBUG_LOOP_TIMING
   uint32_t _t = millis();
   uint8_t buffer = tof.GetWalls();
   Serial.print("GW:"); Serial.print(millis() - _t); _t = millis();
-  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp(), robot.IsRampDetecting());
+  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting(), isDelivering);
   Serial.print("\tCAM:"); Serial.println(millis() - _t);
   #else
   //uint8_t buffer = tof.GetWalls();
-  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting());
+  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting(), isDelivering);
   #endif
+
+  if (cam.HasDelivered()) {
+      UI.Signal(ErrorCodes::BUZZER, 500, 100, 3);
+      if (victimCount >= 3) {
+          currentMissionState = MissionState::DONE;
+      } else {
+          currentMissionState = MissionState::EXPLORE;
+      }
+  }
 
   //Black Tile Handling
 	if(cs.GetFloor() == TileType::black) 

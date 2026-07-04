@@ -179,7 +179,7 @@ ErrorCodes Vcameras::HandleReset(){
 // Update
 //---------------------------------------------------------------------------------------------------------
 
-ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
+ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering){
     if(!_connected) {if(_debug_ifc!=nullptr) _debug_ifc->println("Cams no connection");return ErrorCodes::no_connection;}
 
     if(onRamp != _oldOnRamp){
@@ -237,6 +237,14 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp){
 
     //Determine Victim Type
     char victim = str[1];
+
+    if (isDelivering) {
+        _ui->Signal(ErrorCodes::LED, 500, 500, 3);
+        _ejector->Eject(side, 1);
+        _hasDelivered = true;
+        _timeFound = millis();
+        return ErrorCodes::OK;
+    }
 
 
 
