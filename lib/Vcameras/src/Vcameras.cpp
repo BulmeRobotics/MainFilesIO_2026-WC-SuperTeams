@@ -179,7 +179,7 @@ ErrorCodes Vcameras::HandleReset(){
 // Update
 //---------------------------------------------------------------------------------------------------------
 
-ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering){
+ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering, bool allowPickup){
     if(!_connected) {if(_debug_ifc!=nullptr) _debug_ifc->println("Cams no connection");return ErrorCodes::no_connection;}
 
     if(onRamp != _oldOnRamp){
@@ -229,24 +229,31 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering){
     if(str[0] == 'L') side = ErrorCodes::left;
     else if(str[0] == 'R') side = ErrorCodes::right;
     else return ErrorCodes::invalid;
-    
+
+    // Robot already holds an order and is not delivering: ignore the sighting entirely
+    // (rules: only one order at a time; the target will be picked up again in EXPLORE).
+    if (!isDelivering && !allowPickup) {
+        Recieve(200);	// drain the pending type packet so it is not misread as a side packet later
+        return ErrorCodes::disabled;
+    }
+
     //Send stop command
     _drivetrain->Stop();    //Stop robot
 
     str = Recieve(5000);
+    if (str.length() < 2) return ErrorCodes::TIMEOUT;	// type packet timed out / garbage — abort gracefully
 
-    //Determine Victim Type
+    //Determine Victim Type (cameras send '0'..'4' = the five dishes, SUM -2..+2)
     char victim = str[1];
 
     if (isDelivering) {
+        // Rules delivery: blink LED continuously for 3 s while stationary, then place the kit (<=15 cm)
         _ui->Signal(ErrorCodes::LED, 500, 500, 3);
         _ejector->Eject(side, 1);
         _hasDelivered = true;
-        _timeFound = millis();
+        ResetCam();	// quiesce the camera so the same target cannot trigger a second kit
         return ErrorCodes::OK;
     }
-
-
 
     //Mapping call
     ErrorCodes err = _mapper->SetVictim();
@@ -255,33 +262,25 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering){
         return err;
     }
 
-    //Stops robot
-    _drivetrain->Stop();
+    // Rules pickup: the order is only taken if the robot stops at the target for
+    // at least 5 s and THEN blinks the SUM count (dish '0'..'4' -> 1..5 blinks).
+    uint32_t ts_pickupWait = millis();
+    while (millis() - ts_pickupWait < 5000) {
+        _ui->Update();
+        delay(50);
+    }
 
-    ReadAlertPin();
+    uint8_t blinkCount = (victim >= '0' && victim <= '4') ? (uint8_t)(victim - '0') + 1 : 1;
+    _ui->Signal(ErrorCodes::LED, 500, 500, blinkCount);
+
     //Signal Victim
     char buffer[29];
-    sprintf(buffer,"VICTIM: %c, Side: %c", victim, ((side == ErrorCodes::left) ? 'L' : 'R'));
+    sprintf(buffer,"ORDER: %c, Side: %c", victim, ((side == ErrorCodes::left) ? 'L' : 'R'));
     _ui->ShowPopup(buffer, ErrorCodes::info, 5);
+    _ui->Update();
 
-    _ui->Signal(ErrorCodes::BUZZER_LED, 500, 500 ,1);
-    _ui->Update();
-    for (int i = 0; i < str[1]; i++)
-    {
-        _ui->Signal(ErrorCodes::LED, 500, 500, 1);
-    }
-    _ui->Update();
-    
-    _ui->Update();
     _robot->OnVictimDetected();
 
-    //2RP - Harmed
-    //1RP - Stable
-    //0RP - Unharmed
-
-    //TAKE ORDER STUFF
-
-    _timeFound = millis();  //reset reset time to compensate for waiting
-    ReadAlertPin();
+    ResetCam();	// quiesce the camera so the same target cannot re-trigger immediately
     return ErrorCodes::OK;
 }

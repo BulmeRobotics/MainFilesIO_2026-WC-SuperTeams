@@ -148,6 +148,7 @@ private:    // --- PRIVATE ---
     // -- SuperTeams --
     uint16_t handoverZoneIndex = UINT16_MAX;
     uint16_t missionTargetIndex = UINT16_MAX;
+    uint16_t lastVictimIndex = UINT16_MAX;
 
     // -- Config --
     ErrorCodes pathPriority = ErrorCodes::straight;
@@ -188,6 +189,18 @@ public: // --- PUBLIC ---
         if(_debugPort) _debugPort->println("MissionTarget Cleared");
     }
     uint16_t GetHandoverZoneIndex() { return handoverZoneIndex; }
+
+    /**
+     * @brief Tile index where the most recent victim/order was registered (set by SetVictim)
+     * @return tile index or UINT16_MAX if no victim registered yet
+     */
+    uint16_t GetLastVictimIndex() { return lastVictimIndex; }
+
+    /**
+     * @brief Forces return-home mode: once the robot reaches tile 0 (premapped red exit tile),
+     *        GetInstruction returns MazeFinished and the run ends with the exit signalling.
+     */
+    void ForceReturnHome() { _RETURN_HOME = true; }
 
     /**
      * @brief Informs Mapping of current Tile

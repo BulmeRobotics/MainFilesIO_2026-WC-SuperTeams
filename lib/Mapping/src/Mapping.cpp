@@ -846,65 +846,88 @@ void Mapping::Reset(void) {
     }
 
     // --- PRE-MAPPING SUPERTEAMS RESTAURANT AREA ---
+    // Frame: robot starts on the silver tile at (7,0) facing North (= y+, toward the kitchen).
+    // Layout (y=0 outer row, y=1 middle "hallway" row, y=2 kitchen-adjacent row):
+    //   y=2:  blue9(0,2)   frontier(1..6,2)    blue11(7,2)
+    //   y=1:  t1(0,1) - t2..t7 (1..6,1) - t8(7,1)
+    //   y=0:  red0(0,0)    frontier(1..6,0)    silver10(7,0)
+
     // Index 0: End Tile (Red) at (0,0)
     tiles[0].x = 0; tiles[0].y = 0; tiles[0].z = 0;
     tiles[0].type = TileType::dangerZone;
     tiles[0].weight = COST_REGULAR;
     tiles[0].north = 1;
 
-    // First hallway
-    tiles[1].x = 0; tiles[0].y = 1; tiles[0].z = 0;
+    // Index 1: hallway west end (0,1)
+    tiles[1].x = 0; tiles[1].y = 1; tiles[1].z = 0;
     tiles[1].type = TileType::visited;
     tiles[1].weight = COST_REGULAR;
     tiles[1].south = 0;
     tiles[1].north = 9;
+    tiles[1].east  = 2;
 
-    // Last BLUE
-    tiles[9].x = 0; tiles[0].y = 2; tiles[0].z = 0;
+    // Index 9: far Blue Handoff (0,2)
+    tiles[9].x = 0; tiles[9].y = 2; tiles[9].z = 0;
     tiles[9].type = TileType::blue;
-    tiles[9].weight = COST_REGULAR;
+    tiles[9].weight = COST_BLUE;
     tiles[9].south = 1;
 
-    // Hallway Tiles X = 1 to 6
-    for (uint16_t x = 2; x <= 6; x++) {
-        tiles[x].x = x; tiles[x].y = 1; tiles[x].z = 0;
-        tiles[x].type = TileType::visited;
-        tiles[x].weight = COST_REGULAR;
-        tiles[x].west = x - 1;
-        tiles[x].east = x + 1;
+    // Hallway indices 2..7 at coordinates (1..6, 1), fully linked east-west.
+    // Each hallway tile gets unexplored frontier tiles at y+1 and y-1 so exploration
+    // can leave the premapped corridor (indices 12..17 north row, 18..23 south row).
+    for (uint16_t i = 2; i <= 7; i++) {
+        int16_t hx = i - 1;
+        tiles[i].x = hx; tiles[i].y = 1; tiles[i].z = 0;
+        tiles[i].type = TileType::visited;
+        tiles[i].weight = COST_REGULAR;
+        tiles[i].west = i - 1;
+        tiles[i].east = i + 1;
+
+        uint16_t nIdx = 10 + i;	// 12..17 — frontier row y=2
+        tiles[nIdx].x = hx; tiles[nIdx].y = 2; tiles[nIdx].z = 0;
+        tiles[nIdx].type = TileType::unexplored;
+        tiles[nIdx].south = i;
+        tiles[i].north = nIdx;
+
+        uint16_t sIdx = 16 + i;	// 18..23 — frontier row y=0
+        tiles[sIdx].x = hx; tiles[sIdx].y = 0; tiles[sIdx].z = 0;
+        tiles[sIdx].type = TileType::unexplored;
+        tiles[sIdx].north = i;
+        tiles[i].south = sIdx;
     }
 
-    // Index 7: Start Tile at (7,0)
+    // Index 8: hallway east end (7,1), between start and near handoff
     tiles[8].x = 7; tiles[8].y = 1; tiles[8].z = 0;
     tiles[8].type = TileType::dangerZone;
     tiles[8].weight = COST_DANGER_ZONE;
-    tiles[8].west  =  6;
+    tiles[8].west  =  7;
     tiles[8].south = 10;
     tiles[8].north = 11;
 
-    // Index 8: Left Corridor (0,-1)
-    tiles[10].x = 8; tiles[8].y = 0; tiles[8].z = 0;
+    // Index 10: Start Tile (Silver) at (7,0)
+    tiles[10].x = 7; tiles[10].y = 0; tiles[10].z = 0;
     tiles[10].type = TileType::checkpoint;
     tiles[10].weight = COST_REGULAR;
-    tiles[10].north = 0;
+    tiles[10].north = 8;
 
     currentPosition = 10;
 
-    // Index 11: Right Blue Handoff (7,-2)
+    // Index 11: near Blue Handoff (7,2)
     tiles[11].x = 7; tiles[11].y = 2; tiles[11].z = 0;
     tiles[11].type = TileType::blue;
-    tiles[11].weight = COST_REGULAR;
+    tiles[11].weight = COST_BLUE;
     tiles[11].south = 8;
 
     // Initialize state
-    //currentPosition = 0;
     currentOrientation = Orientations::North;
-    handoverZoneIndex = 11; // Default to Left Handoff (0,-2)
+    handoverZoneIndex = 11; // Default to the near handoff (7,2), two tiles ahead of the start
 
     resetCounter = 0;
     lastCheckpointPosition = currentPosition;
     memcpy(backupTiles, tiles, sizeof(tiles));
     _PANIC_MODE_ACTIVE = false;
+    _RETURN_HOME = false;	// must not survive into a new run (ForceReturnHome / previous return-home)
+    lastVictimIndex = UINT16_MAX;
 }
 
 // void Mapping::PrintInternalMap() {
@@ -1037,6 +1060,7 @@ ErrorCodes Mapping::SetVictim(){
     //Check if already found
     if (tiles[currentPosition].victim) return ErrorCodes::already_found;
     tiles[currentPosition].victim = true;
+    lastVictimIndex = currentPosition;	// remember order tile at detection time (position may advance before main reads it)
     return ErrorCodes::OK;
 }
 

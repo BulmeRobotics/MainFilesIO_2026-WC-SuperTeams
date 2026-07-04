@@ -20,6 +20,9 @@
 #define CAM_ALERT_SLOW_BUDGET 1500	// ms a continuous cam alert may hold slow speed; a stuck alert must not keep the robot crawling
 #define TURN_SPLIT_PAUSE_MS 500		// still-hold window between the two 90° legs of a split 180° turn (camera scan)
 
+#define BLE_HANDSHAKE_TIMEOUT_MS 30000	// total budget for the BLE order handoff; a mute partner must not park us on the blue tile
+#define DELIVER_DWELL_MS 5000			// stationary dwell on the order tile so the cameras can re-register the target
+
 // #define PID_TUNE_MODE        // Uncomment to enable drive-forever PID tuning harness
 // #define TURN_TUNE_MODE       // Uncomment to enable alternating-90° turn PID tuning harness
 // #define DEBUG_LOOP_TIMING    // Uncomment to print per-subsystem timing in cyclicMainTask/cyclicRunTask
@@ -89,9 +92,11 @@ enum class MissionState { EXPLORE, RETURN_HANDOVER, HANDOVER_BLE_SYNC, DELIVER, 
 MissionState currentMissionState = MissionState::EXPLORE;
 uint16_t currentVictimTile = UINT16_MAX;
 uint8_t victimCount = 0;
-uint32_t bleWaitStart = 0;
+uint32_t bleWaitStart = 0;			// per-step timer, reset at every handshake step transition
+uint32_t bleHandshakeStart = 0;		// overall handshake budget (BLE_HANDSHAKE_TIMEOUT_MS)
 uint8_t bleSyncStep = 0;
 String bleBuffer = "";
+uint32_t ts_deliverDwell = 0;		// start of the stationary dwell on the order tile (0 = not dwelling)
 
 //----Flags----
 bool _ROBOT_TURNING = false;
@@ -301,22 +306,27 @@ while (true) {
       UI.UpdateMap();
 
       // --- SUPERTEAMS MISSION LOGIC ---
-      // Check if a new victim was found
-      uint8_t currentVictims = 0;
-      for (int i = 0; i < 256; i++) {
-          if (mapper.GetTiles()[i].victim) currentVictims++;
-      }
-      if (currentVictims > victimCount) {
-          victimCount = currentVictims;
-          currentVictimTile = mapper.GetCurrentPosition();
-          currentMissionState = MissionState::RETURN_HANDOVER;
+      // Check if a new victim was found. Only accepted while EXPLORING: a sighting during
+      // RETURN/HANDOVER/DELIVER must not overwrite the active order (rules: one order at a
+      // time, delivery only scores at the order's own target). Vcameras also suppresses
+      // pickups outside EXPLORE via the allowPickup flag.
+      if (currentMissionState == MissionState::EXPLORE) {
+          uint8_t currentVictims = 0;
+          for (int i = 0; i < 256; i++) {
+              if (mapper.GetTiles()[i].victim) currentVictims++;
+          }
+          if (currentVictims > victimCount) {
+              victimCount = currentVictims;
+              currentVictimTile = mapper.GetLastVictimIndex();	// tile recorded at detection time, not current position
+              currentMissionState = MissionState::RETURN_HANDOVER;
+          }
       }
 
       uint16_t hz = mapper.GetHandoverZoneIndex();
-      
+
       if (currentMissionState == MissionState::EXPLORE) {
           mapper.ClearMissionTarget();
-      } 
+      }
       else if (currentMissionState == MissionState::RETURN_HANDOVER) {
           if (hz != UINT16_MAX) {
               mapper.SetMissionTarget(hz);
@@ -325,13 +335,22 @@ while (true) {
               currentMissionState = MissionState::HANDOVER_BLE_SYNC;
               bleSyncStep = 0;
               bleBuffer = "";
+              bleHandshakeStart = millis();
               robot.EndDrive();
           }
-      } 
+      }
       else if (currentMissionState == MissionState::HANDOVER_BLE_SYNC) {
           robot.EndDrive();
-          // Non-blocking BLE pseudo-handover sequence
-          if (bleSyncStep == 0) {
+
+          // Partner may never answer (or answer garbage): after the total budget expires,
+          // give up on the handoff and deliver anyway — rules allow delivery without it.
+          if (millis() - bleHandshakeStart > BLE_HANDSHAKE_TIMEOUT_MS) {
+              UI.ShowPopup("HANDSHAKE TIMEOUT - DELIVER", ErrorCodes::warning, 3);
+              currentMissionState = MissionState::DELIVER;
+          }
+
+          // Non-blocking BLE pseudo-handover sequence (bleWaitStart = per-step timer)
+          else if (bleSyncStep == 0) {
               ble.print("<HS>");
               bleWaitStart = millis();
               bleSyncStep = 1;
@@ -343,6 +362,7 @@ while (true) {
               if (bleBuffer.indexOf("<HR>") != -1) {
                   bleBuffer = "";
                   ble.print("<O" + String(victimCount) + ">");
+                  bleWaitStart = millis();
                   bleSyncStep = 2;
               } else if (millis() - bleWaitStart > 5000) {
                   // Timeout, retry
@@ -355,18 +375,20 @@ while (true) {
               }
               if (bleBuffer.indexOf("<DR>") != -1) {
                   bleBuffer = "";
+                  bleWaitStart = millis();
                   bleSyncStep = 3;
               } else if (millis() - bleWaitStart > 10000) {
                   // Timeout, retry
                   bleSyncStep = 0;
               }
           } else if (bleSyncStep == 3) {
-              // Ensure we stay for 5 seconds on the handoff tile
+              // Stay stationary 5 s AFTER the handshake completed — the rules' handoff window
+              // (both robots on their tiles for 5 s) must not be cut short by a fast handshake.
               if (millis() - bleWaitStart >= 5000) {
                   currentMissionState = MissionState::DELIVER;
               }
           }
-          
+
           if (currentMissionState == MissionState::HANDOVER_BLE_SYNC) {
               continue; // Stay in this state, don't get map instructions yet
           }
@@ -376,13 +398,34 @@ while (true) {
               mapper.SetMissionTarget(currentVictimTile);
           }
           if (mapper.GetCurrentPosition() == currentVictimTile) {
-              // We reached the tile! Switch to DELIVER_SEARCH so it drives around and camera can find it.
+              // We reached the tile! Switch to DELIVER_SEARCH so the camera can re-register the target.
               currentMissionState = MissionState::DELIVER_SEARCH;
+              ts_deliverDwell = 0;
               mapper.ClearMissionTarget();
           }
       }
       else if (currentMissionState == MissionState::DELIVER_SEARCH) {
-          // Normal exploration in this state until camera triggers delivery
+          if (mapper.GetCurrentPosition() == currentVictimTile) {
+              // On the order tile: stand still >= DELIVER_DWELL_MS so the cameras can
+              // re-register the target (cam.Update ejects via isDelivering in cyclicRunTask).
+              robot.EndDrive();
+              if (ts_deliverDwell == 0) ts_deliverDwell = millis();
+              if (millis() - ts_deliverDwell < DELIVER_DWELL_MS) continue;
+              // Dwell expired without a delivery: explore a step to change the camera aspect,
+              // the branch below then steers back to the order tile.
+              ts_deliverDwell = 0;
+              mapper.ClearMissionTarget();
+          } else {
+              // Wandered off (or dwell expired): steer back to the order tile.
+              ts_deliverDwell = 0;
+              mapper.SetMissionTarget(currentVictimTile);
+          }
+      }
+      else if (currentMissionState == MissionState::DONE) {
+          // All orders delivered: head for the red exit tile (premapped index 0) and
+          // finish — MazeFinished on arrival triggers the END state signalling.
+          mapper.SetMissionTarget(0);
+          mapper.ForceReturnHome();
       }
 
       //Get Instructions Logic
@@ -642,20 +685,25 @@ void cyclicMainTask() {
   #endif
 }
 void cyclicRunTask() {
-  bool isDelivering = (currentMissionState == MissionState::DELIVER_SEARCH);
+  // Eject only on the order's own tile — delivering at any other target scores nothing (rules).
+  bool isDelivering = (currentMissionState == MissionState::DELIVER_SEARCH)
+                   && (mapper.GetCurrentPosition() == currentVictimTile);
+  // New orders are only taken while exploring (rules: one order at a time).
+  bool allowPickup = (currentMissionState == MissionState::EXPLORE);
   #ifdef DEBUG_LOOP_TIMING
   uint32_t _t = millis();
   uint8_t buffer = tof.GetWalls();
   Serial.print("GW:"); Serial.print(millis() - _t); _t = millis();
-  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting(), isDelivering);
+  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting(), isDelivering, allowPickup);
   Serial.print("\tCAM:"); Serial.println(millis() - _t);
   #else
   //uint8_t buffer = tof.GetWalls();
-  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting(), isDelivering);
+  cam.Update(cs.GetFloor() == TileType::dangerZone, robot.IsOnRamp() || robot.IsRampDetecting(), isDelivering, allowPickup);
   #endif
 
   if (cam.HasDelivered()) {
       UI.Signal(ErrorCodes::BUZZER, 500, 100, 3);
+      ts_deliverDwell = 0;
       if (victimCount >= 3) {
           currentMissionState = MissionState::DONE;
       } else {

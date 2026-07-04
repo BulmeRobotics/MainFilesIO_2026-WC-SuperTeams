@@ -120,9 +120,10 @@ public:
      * @param onRed is robot on Red Tile?
      * @param onRamp is robot on a confirmed ramp? (disables cams + suppresses victim acting)
      * @param isDelivering if true, triggers rescue kit ejection instead of victim taking
+     * @param allowPickup if false, new order targets are ignored (robot already holds an order — rules allow only one at a time)
      * @return ErrorCodes for debugging
      */
-    ErrorCodes Update(bool onRed, bool onRamp = false, bool isDelivering = false);
+    ErrorCodes Update(bool onRed, bool onRamp = false, bool isDelivering = false, bool allowPickup = true);
 
     bool HasDelivered() {
         if (_hasDelivered) {
