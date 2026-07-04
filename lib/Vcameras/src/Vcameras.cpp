@@ -262,6 +262,12 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering, bool all
         return err;
     }
 
+    //Signal Victim
+    char buffer[29];
+    sprintf(buffer,"ORDER: %c, Side: %c", victim, ((side == ErrorCodes::left) ? 'L' : 'R'));
+    _ui->ShowPopup(buffer, ErrorCodes::info, 6);
+    _ui->Update();
+
     // Rules pickup: the order is only taken if the robot stops at the target for
     // at least 5 s and THEN blinks the SUM count (dish '0'..'4' -> 1..5 blinks).
     uint32_t ts_pickupWait = millis();
@@ -273,11 +279,7 @@ ErrorCodes Vcameras::Update(bool onRed, bool onRamp, bool isDelivering, bool all
     uint8_t blinkCount = (victim >= '1' && victim <= '5') ? (uint8_t)(victim - '0') : 1;
     _ui->Signal(ErrorCodes::LED, 500, 500, blinkCount);
 
-    //Signal Victim
-    char buffer[29];
-    sprintf(buffer,"ORDER: %c, Side: %c", victim, ((side == ErrorCodes::left) ? 'L' : 'R'));
-    _ui->ShowPopup(buffer, ErrorCodes::info, 5);
-    _ui->Update();
+    
 
     _robot->OnVictimDetected();
 
