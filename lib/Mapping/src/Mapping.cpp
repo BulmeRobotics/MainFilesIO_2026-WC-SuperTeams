@@ -898,15 +898,15 @@ void Mapping::Reset(void) {
 
     // Index 8: hallway east end (7,1), between start and near handoff
     tiles[8].x = 7; tiles[8].y = 1; tiles[8].z = 0;
-    tiles[8].type = TileType::dangerZone;
-    tiles[8].weight = COST_DANGER_ZONE;
+    tiles[8].type = TileType::visited;
+    tiles[8].weight = COST_REGULAR;
     tiles[8].west  =  7;
     tiles[8].south = 10;
     tiles[8].north = 11;
 
     // Index 10: Start Tile (Silver) at (7,0)
     tiles[10].x = 7; tiles[10].y = 0; tiles[10].z = 0;
-    tiles[10].type = TileType::checkpoint;
+    tiles[10].type  = TileType::checkpoint;
     tiles[10].weight = COST_REGULAR;
     tiles[10].north = 8;
 
@@ -916,7 +916,7 @@ void Mapping::Reset(void) {
     tiles[11].x = 7; tiles[11].y = 2; tiles[11].z = 0;
     tiles[11].type = TileType::blue;
     tiles[11].weight = COST_BLUE;
-    tiles[11].south = 8;
+    tiles[11].south  = 8;
 
     // Initialize state
     currentOrientation = Orientations::North;
