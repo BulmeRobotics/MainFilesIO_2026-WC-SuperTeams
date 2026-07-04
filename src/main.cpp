@@ -1,7 +1,7 @@
 /**
 * @authors: Vincent Rohkamm, Florian Wiesner
-* @date: 18.11.2025
-* @description: Main program file for the robot
+* @date: 04.07.2026
+* @description: Main program file for the Super Teams Challenge
 */
 
 #ifdef _MSC_VER
