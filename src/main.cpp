@@ -138,14 +138,11 @@ int main(void) {
 
   //----EEPROM---- (before ConnectPointer, so the persisted settings are applied before the UI can draw them)
   if (eeprom.Init() != ErrorCodes::OK) UI.AddInfoMsg("EEPROM", "ERROR", false);
-  else {
-    UI.AddInfoMsg("EEPROM", "OK", true);
-    ErrorCodes savedLayer, savedRamp;
-    bool savedShowInvalid;
-    eeprom.ReadUiSettings(savedLayer, savedRamp, savedShowInvalid);
-    mapper.SetSettings(savedLayer, savedRamp);
-    cam.SetShowInvalid(savedShowInvalid);
-  }
+  else UI.AddInfoMsg("EEPROM", "OK", true);
+
+  // Fixed run configuration — not changeable via UI buttons: single layer, ramps off, hide invalid victims
+  mapper.SetSettings(ErrorCodes::single, ErrorCodes::disabled);
+  cam.SetShowInvalid(false);
 
   UI.ConnectPointer(&currentMenuState, &cs, &mapper, &cam, &ejector, &eeprom);
     //Buttons
