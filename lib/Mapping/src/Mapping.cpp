@@ -495,7 +495,7 @@ ErrorCodes Mapping::SetTile(uint8_t walls, TileType floor) {
     uint16_t bufferIndex = 0;
     //check Walls -> activate neighboring tiles depending on walls and exploration status
     //start with Northern Tile:
-    if ((absWalls & (1 << 0)) == 0 && tiles[currentPosition].north == -1) {
+    if ((absWalls & (1 << 0)) == 0 && tiles[currentPosition].north == -1 && tiles[currentPosition].y < 2) {
         uint16_t nx = tiles[currentPosition].x,
 			ny = tiles[currentPosition].y + 1,
 			nz = tiles[currentPosition].z;
@@ -518,7 +518,7 @@ ErrorCodes Mapping::SetTile(uint8_t walls, TileType floor) {
         }
     }
     //South
-    if ((absWalls & (1 << 2)) == 0 && tiles[currentPosition].south == -1) {
+    if ((absWalls & (1 << 2)) == 0 && tiles[currentPosition].south == -1 && tiles[currentPosition].y > 0) {
         uint16_t nx = tiles[currentPosition].x,
             ny = tiles[currentPosition].y - 1,
             nz = tiles[currentPosition].z;
@@ -682,9 +682,11 @@ Instructionset Mapping::GetInstruction() {
                 // Skip if no neighbor in this direction or already in closed list
                 if (neighborIndex == -1 || closed[neighborIndex]) continue;
 
-                // Skip inactive or black tiles (impassable)
+                // Skip inactive, black, or unexplored tiles (impassable/unknown)
+                // (Except if the neighborIndex is the target itself)
                 if (tiles[neighborIndex].type == TileType::inactive ||
-                    tiles[neighborIndex].type == TileType::black) continue;
+                    tiles[neighborIndex].type == TileType::black ||
+                    (tiles[neighborIndex].type == TileType::unexplored && neighborIndex != targetPosition)) continue;
 
                 // Calculate G-cost (movement cost from start to this neighbor)
                 uint16_t edgeCost = tiles[neighborIndex].weight;
@@ -1054,8 +1056,8 @@ ErrorCodes Mapping::RestartCheckpoint() {
 }
 
 ErrorCodes Mapping::SetVictim(){
-    //Check if even valid tile Type
-    if(!(tiles[currentPosition].type == TileType::visited || tiles[currentPosition].type == TileType::unexplored)) return ErrorCodes::invalid;
+    //Check if even valid tile Type (cannot be inactive or black)
+    if(tiles[currentPosition].type == TileType::inactive || tiles[currentPosition].type == TileType::black) return ErrorCodes::invalid;
 
     //Check if already found
     if (tiles[currentPosition].victim) return ErrorCodes::already_found;
