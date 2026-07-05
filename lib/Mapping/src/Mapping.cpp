@@ -920,6 +920,15 @@ void Mapping::Reset(void) {
     tiles[11].weight = COST_BLUE;
     tiles[11].south  = 8;
 
+    // Index 24: Robot B's waiting tile (7,3), north of the near handoff — premapped black so the
+    // black-tile reflex nets to zero (Move forward/back) instead of desyncing the position.
+    // SetTile's y<2 gate means this tile could never be created at runtime.
+    tiles[24].x = 7; tiles[24].y = 3; tiles[24].z = 0;
+    tiles[24].type = TileType::black;
+    tiles[24].weight = 255;
+    tiles[24].south = 11;
+    tiles[11].north = 24;
+
     // Initialize state
     currentOrientation = Orientations::North;
     handoverZoneIndex = 11; // Default to the near handoff (7,2), two tiles ahead of the start

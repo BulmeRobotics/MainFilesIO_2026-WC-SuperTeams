@@ -795,10 +795,14 @@ void ExecTileBehavior(TileAction action){
   switch(action){
     case TileAction::REVERSE:
       robot.EndDrive();	//Stop Robot
-      
-      mapper.Move(true);
-      mapper.SetTile(0x0F, TileType::black);
-      mapper.Move(false);	//Move robot Backwards
+
+      // Only advance-mark-retreat if the map has a tile ahead: when the front sensor catches
+      // black floor with no forward neighbor mapped (nose over an unmappable tile at the frame
+      // edge), Move(true) returns wall — stepping back anyway would desync the position by one.
+      if (mapper.Move(true) == ErrorCodes::OK) {
+        mapper.SetTile(0x0F, TileType::black);
+        mapper.Move(false);	//Move robot Backwards
+      }
 
       cam.ResetCam();
 
