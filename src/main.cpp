@@ -20,8 +20,8 @@
 #define CAM_ALERT_SLOW_BUDGET 1500	// ms a continuous cam alert may hold slow speed; a stuck alert must not keep the robot crawling
 #define TURN_SPLIT_PAUSE_MS 500		// still-hold window between the two 90° legs of a split 180° turn (camera scan)
 
-#define BLE_HANDSHAKE_TIMEOUT_MS 30000	// total budget for the BLE order handoff; a mute partner must not park us on the blue tile
-#define DELIVER_DWELL_MS 5000			// stationary dwell on the order tile so the cameras can re-register the target
+#define BLE_HANDSHAKE_TIMEOUT_MS 10000	// total budget for the BLE order handoff; a mute partner must not park us on the blue tile
+#define DELIVER_DWELL_MS 2000			// stationary dwell on the order tile so the cameras can re-register the target
 
 // #define PID_TUNE_MODE        // Uncomment to enable drive-forever PID tuning harness
 // #define TURN_TUNE_MODE       // Uncomment to enable alternating-90° turn PID tuning harness

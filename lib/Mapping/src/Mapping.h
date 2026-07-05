@@ -183,6 +183,7 @@ public: // --- PUBLIC ---
     void SetMissionTarget(uint16_t tileIndex) { 
         missionTargetIndex = tileIndex; 
         if(_debugPort) _debugPort->println("MissionTarget Set: " + String(tileIndex));
+        //Logic to calculate target path
     }
     void ClearMissionTarget() { 
         missionTargetIndex = UINT16_MAX; 
